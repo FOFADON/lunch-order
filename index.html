@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>公司便當點餐</title>
+  <style>
+    :root {
+      --bg: #f7f3ec;
+      --card: #ffffff;
+      --text: #2e2924;
+      --muted: #7c746c;
+      --line: #e9e1d8;
+      --accent: #9b5f39;
+      --accent-dark: #7f4929;
+      --success: #2e7d57;
+      --danger: #b94141;
+      --soft: #f0e4d9;
+      --shadow: 0 10px 30px rgba(63, 44, 30, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #f7f3ec 0%, #efe6dc 100%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+        "Noto Sans TC", sans-serif;
+      min-height: 100vh;
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    .app {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(24px, 5vw, 34px);
+      letter-spacing: .02em;
+    }
+
+    .brand p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .admin-btn {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.8);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.75);
+    }
+
+    .restaurant-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .restaurant-name {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--success);
+      background: #e9f5ef;
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-weight: 700;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .menu-image-wrap {
+      border-radius: 18px;
+      overflow: hidden;
+      background: #eee7df;
+      aspect-ratio: 4 / 3;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      cursor: zoom-in;
+    }
+
+    .menu-image-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: none;
+    }
+
+    .image-placeholder {
+      text-align: center;
+      color: var(--muted);
+      padding: 24px;
+    }
+
+    .image-placeholder .emoji {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    .hint {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 7px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    select, input[type="text"], input[type="number"], input[type="time"], input[type="password"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px 13px;
+      outline: none;
+      transition: .2s;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(155,95,57,.12);
+    }
+
+    .menu-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .menu-item {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 13px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: .18s;
+    }
+
+    .menu-item:hover {
+      transform: translateY(-1px);
+      border-color: #d7c6b7;
+    }
+
+    .menu-item.selected {
+      border-color: var(--accent);
+      background: #fff8f2;
+      box-shadow: 0 0 0 2px rgba(155,95,57,.10);
+    }
+
+    .menu-item input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .item-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .item-name {
+      font-weight: 800;
+    }
+
+    .item-category {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .item-price {
+      font-weight: 900;
+      color: var(--accent-dark);
+      white-space: nowrap;
+    }
+
+    .summary {
+      margin-top: 16px;
+      background: #faf6f1;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 15px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 5px 0;
+    }
+
+    .summary-row.total {
+      font-size: 18px;
+      font-weight: 900;
+      border-top: 1px dashed #d9c8b9;
+      margin-top: 6px;
+      padding-top: 12px;
+    }
+
+    .self-pay {
+      color: var(--danger);
+      font-weight: 900;
+    }
+
+    .submit-btn {
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      padding: 14px;
+      background: var(--accent);
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+      margin-top: 14px;
+      transition: .2s;
+    }
+
+    .submit-btn:hover {
+      background: var(--accent-dark);
+      transform: translateY(-1px);
+    }
+
+    .submit-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .notice {
+      margin-top: 12px;
+      min-height: 24px;
+      font-size: 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .notice.ok { color: var(--success); }
+    .notice.error { color: var(--danger); }
+
+    .admin-panel {
+      display: none;
+      margin-top: 16px;
+    }
+
+    .admin-panel.show {
+      display: block;
+    }
+
+    .admin-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .admin-badge {
+      background: #2f2b27;
+      color: white;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .admin-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .small-btn {
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .small-btn.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .small-btn.danger {
+      color: var(--danger);
+    }
+
+    .admin-menu-row {
+      display: grid;
+      grid-template-columns: 1fr 110px 96px 42px;
+      gap: 8px;
+      margin-top: 8px;
+      align-items: center;
+    }
+
+    .admin-menu-row button {
+      border: 0;
+      background: #f6e8e8;
+      color: var(--danger);
+      border-radius: 10px;
+      height: 42px;
+      cursor: pointer;
+    }
+
+    .orders-box {
+      margin-top: 16px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+    }
+
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      padding: 11px 8px;
+      font-size: 14px;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 18px;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(28,22,18,.55);
+      display: none;
+      place-items: center;
+      padding: 18px;
+      z-index: 100;
+    }
+
+    .modal.show { display: grid; }
+
+    .modal-card {
+      background: white;
+      width: min(420px, 100%);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 20px 70px rgba(0,0,0,.2);
+    }
+
+    .modal-card h3 {
+      margin: 0 0 12px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .modal-actions button {
+      flex: 1;
+    }
+
+    .image-modal img {
+      max-width: min(100%, 880px);
+      max-height: 88vh;
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .admin-grid { grid-template-columns: 1fr; }
+      .admin-menu-row {
+        grid-template-columns: 1fr 88px 82px 42px;
+      }
+      .topbar { align-items: flex-start; }
+      .admin-btn { padding: 9px 11px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>🍱 公司便當點餐</h1>
+        <p>每人公司補助上限 150 元，超過部分自行支付</p>
+      </div>
+      <button class="admin-btn" id="adminOpenBtn">⚙️ 管理模式</button>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <div class="restaurant-row">
+          <div>
+            <div class="restaurant-name" id="restaurantNameText">今日便當店</div>
+            <div class="meta">截止時間：<span id="deadlineText">10:30</span></div>
+          </div>
+          <div class="status" id="openStatus">● 開放點餐</div>
+        </div>
+
+        <div class="menu-image-wrap" id="menuImageWrap">
+          <img id="menuImage" alt="店家菜單" />
+          <div class="image-placeholder" id="imagePlaceholder">
+            <div class="emoji">🖼️</div>
+            <div>尚未上傳店家菜單</div>
+          </div>
+        </div>
+        <div class="hint">點一下圖片可放大查看</div>
+      </article>
+
+      <article class="card">
+        <h2 class="section-title">開始點餐</h2>
+
+        <div class="field">
+          <label for="employeeSelect">我是誰？</label>
+          <select id="employeeSelect">
+            <option value="">請選擇姓名</option>
+            <option>葉董</option>
+            <option>佩晴</option>
+            <option>佩雯</option>
+            <option>淑君</option>
+            <option>AK</option>
+            <option>宜勻</option>
+            <option>庸冊</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="mealInput">我想吃什麼？</label>
+          <textarea id="mealInput" placeholder="例如：蔥燒雪花牛＋全熟蛋＋無糖紅茶" style="width:100%;min-height:92px;border:1px solid var(--line);border-radius:14px;padding:12px 13px;resize:vertical;"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="amountInput">餐點金額</label>
+          <input id="amountInput" type="number" min="0" inputmode="numeric" placeholder="例如：185" />
+        </div>
+
+        <div class="field">
+          <label for="noteInput">備註（可不填）</label>
+          <textarea id="noteInput" placeholder="例如：飯少、不要香菜、醬另外放" style="width:100%;min-height:82px;border:1px solid var(--line);border-radius:14px;padding:12px 13px;resize:vertical;"></textarea>
+        </div>
+
+        <div class="summary">
+          <div class="summary-row">
+            <span>餐點總額</span>
+            <strong><span id="totalAmount">0</span> 元</strong>
+          </div>
+          <div class="summary-row">
+            <span>公司負擔</span>
+            <strong><span id="companyAmount">0</span> 元</strong>
+          </div>
+          <div class="summary-row total">
+            <span>自己支付</span>
+            <span class="self-pay"><span id="selfPayAmount">0</span> 元</span>
+          </div>
+        </div>
+
+        <button class="submit-btn" id="submitOrderBtn">送出訂單</button>
+        <div class="notice" id="notice"></div>
+      </article>
+    </section>
+
+    <section class="card admin-panel" id="adminPanel">
+      <div class="admin-head">
+        <h2 class="section-title" style="margin:0">管理設定</h2>
+        <span class="admin-badge">管理者：庸冊</span>
+      </div>
+
+      <div class="admin-grid">
+        <div class="field">
+          <label for="restaurantInput">店家名稱</label>
+          <input id="restaurantInput" type="text" value="今日便當店" />
+        </div>
+        <div class="field">
+          <label for="deadlineInput">截止時間</label>
+          <input id="deadlineInput" type="time" value="10:30" />
+        </div>
+        <div class="field">
+          <label for="subsidyInput">每人補助上限</label>
+          <input id="subsidyInput" type="number" value="150" min="0" />
+        </div>
+        <div class="field">
+          <label for="openSelect">點餐狀態</label>
+          <select id="openSelect">
+            <option value="true">開放點餐</option>
+            <option value="false">關閉點餐</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="imageUpload">上傳店家菜單圖片</label>
+        <input id="imageUpload" type="file" accept="image/*" />
+      </div>
+
+      <div class="admin-actions">
+        <button class="small-btn primary" id="saveSettingsBtn">儲存設定</button>
+        <button class="small-btn danger" id="clearOrdersBtn">清除全部訂單</button>
+        <button class="small-btn" id="logoutAdminBtn">離開管理模式</button>
+      </div>
+
+      <div class="orders-box">
+        <h3>目前點餐狀況</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>餐點</th>
+              <th>備註</th>
+              <th>總額</th>
+              <th>公司負擔</th>
+              <th>自付</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="loginModal">
+    <div class="modal-card">
+      <h3>進入管理模式</h3>
+      <div class="field">
+        <label for="adminPassword">管理密碼</label>
+        <input id="adminPassword" type="password" placeholder="請輸入密碼" />
+      </div>
+      <div class="meta">示範版密碼：1234</div>
+      <div class="modal-actions">
+        <button class="small-btn" id="cancelLoginBtn">取消</button>
+        <button class="small-btn primary" id="loginBtn">登入</button>
+      </div>
+      <div class="notice error" id="loginNotice"></div>
+    </div>
+  </div>
+
+  <div class="modal image-modal" id="imageModal">
+    <img id="largeImage" alt="放大菜單" />
+  </div>
+
+  <script>
+    const employeeNames = ["葉董", "佩晴", "佩雯", "淑君", "AK", "宜勻", "庸冊"];
+
+    const state = JSON.parse(localStorage.getItem("lunchTextOrderState")) || {
+      restaurant: "今日便當店",
+      deadline: "10:30",
+      subsidy: 150,
+      isOpen: true,
+      image: "",
+      orders: {}
+    };
+
+    const els = {
+      restaurantNameText: document.getElementById("restaurantNameText"),
+      deadlineText: document.getElementById("deadlineText"),
+      openStatus: document.getElementById("openStatus"),
+      menuImage: document.getElementById("menuImage"),
+      imagePlaceholder: document.getElementById("imagePlaceholder"),
+      employeeSelect: document.getElementById("employeeSelect"),
+      mealInput: document.getElementById("mealInput"),
+      amountInput: document.getElementById("amountInput"),
+      noteInput: document.getElementById("noteInput"),
+      totalAmount: document.getElementById("totalAmount"),
+      companyAmount: document.getElementById("companyAmount"),
+      selfPayAmount: document.getElementById("selfPayAmount"),
+      submitOrderBtn: document.getElementById("submitOrderBtn"),
+      notice: document.getElementById("notice"),
+      adminPanel: document.getElementById("adminPanel"),
+      loginModal: document.getElementById("loginModal"),
+      adminPassword: document.getElementById("adminPassword"),
+      loginNotice: document.getElementById("loginNotice"),
+      restaurantInput: document.getElementById("restaurantInput"),
+      deadlineInput: document.getElementById("deadlineInput"),
+      subsidyInput: document.getElementById("subsidyInput"),
+      openSelect: document.getElementById("openSelect"),
+      ordersBody: document.getElementById("ordersBody"),
+      imageModal: document.getElementById("imageModal"),
+      largeImage: document.getElementById("largeImage")
+    };
+
+    function persist() {
+      localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
+    }
+
+    function renderAll() {
+      els.restaurantNameText.textContent = state.restaurant;
+      els.deadlineText.textContent = state.deadline;
+      els.openStatus.textContent = state.isOpen ? "● 開放點餐" : "● 已關閉點餐";
+      els.openStatus.style.color = state.isOpen ? "var(--success)" : "var(--danger)";
+      els.openStatus.style.background = state.isOpen ? "#e9f5ef" : "#fbeaea";
+
+      els.restaurantInput.value = state.restaurant;
+      els.deadlineInput.value = state.deadline;
+      els.subsidyInput.value = state.subsidy;
+      els.openSelect.value = String(state.isOpen);
+
+      if (state.image) {
+        els.menuImage.src = state.image;
+        els.largeImage.src = state.image;
+        els.menuImage.style.display = "block";
+        els.imagePlaceholder.style.display = "none";
+      } else {
+        els.menuImage.style.display = "none";
+        els.imagePlaceholder.style.display = "block";
+      }
+
+      els.submitOrderBtn.disabled = !state.isOpen;
+      renderOrders();
+      recalc();
+    }
+
+    function recalc() {
+      const total = Math.max(Number(els.amountInput.value || 0), 0);
+      const company = Math.min(total, Number(state.subsidy || 0));
+      const selfPay = Math.max(total - Number(state.subsidy || 0), 0);
+
+      els.totalAmount.textContent = total;
+      els.companyAmount.textContent = company;
+      els.selfPayAmount.textContent = selfPay;
+
+      if (total > 300) {
+        els.notice.textContent = "⚠️ 金額超過 300 元，請確認是否輸入正確";
+        els.notice.className = "notice error";
+      }
+    }
+
+    function renderOrders() {
+      const orders = employeeNames.map(name => state.orders[name]).filter(Boolean);
+      els.ordersBody.innerHTML = "";
+
+      if (!orders.length) {
+        els.ordersBody.innerHTML = '<tr><td colspan="6" class="empty">目前還沒有人點餐</td></tr>';
+        return;
+      }
+
+      orders.forEach(order => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${escapeHtml(order.name)}</td>
+          <td>${escapeHtml(order.meal)}</td>
+          <td>${escapeHtml(order.note || "—")}</td>
+          <td>${order.total} 元</td>
+          <td>${order.company} 元</td>
+          <td>${order.selfPay} 元</td>
+        `;
+        els.ordersBody.appendChild(tr);
+      });
+    }
+
+    els.amountInput.addEventListener("input", recalc);
+
+    els.employeeSelect.addEventListener("change", () => {
+      const existing = state.orders[els.employeeSelect.value];
+
+      if (existing) {
+        els.mealInput.value = existing.meal;
+        els.amountInput.value = existing.total;
+        els.noteInput.value = existing.note || "";
+        els.notice.textContent = `${existing.name} 已經點過，可修改後再次送出`;
+        els.notice.className = "notice ok";
+        els.submitOrderBtn.textContent = "更新訂單";
+      } else {
+        els.mealInput.value = "";
+        els.amountInput.value = "";
+        els.noteInput.value = "";
+        els.notice.textContent = "";
+        els.notice.className = "notice";
+        els.submitOrderBtn.textContent = "送出訂單";
+      }
+
+      recalc();
+    });
+
+    els.submitOrderBtn.addEventListener("click", () => {
+      const name = els.employeeSelect.value;
+      const meal = els.mealInput.value.trim();
+      const total = Number(els.amountInput.value || 0);
+      const note = els.noteInput.value.trim();
+
+      if (!state.isOpen) return showError("目前已關閉點餐");
+      if (!name) return showError("請先選擇姓名");
+      if (!meal) return showError("請輸入想吃的餐點");
+      if (!Number.isFinite(total) || total <= 0) return showError("請輸入正確的餐點金額");
+      if (total > 300 && !confirm(`你輸入的金額是 ${total} 元，確定正確嗎？`)) return;
+
+      const company = Math.min(total, Number(state.subsidy));
+      const selfPay = Math.max(total - Number(state.subsidy), 0);
+      const isUpdate = Boolean(state.orders[name]);
+
+      state.orders[name] = {
+        name, meal, note, total, company, selfPay,
+        updatedAt: new Date().toLocaleString("zh-TW")
+      };
+
+      persist();
+      renderOrders();
+      els.notice.textContent = `${name} 已${isUpdate ? "更新" : "完成"}點餐！${selfPay > 0 ? ` 需自行支付 ${selfPay} 元` : ""}`;
+      els.notice.className = "notice ok";
+      els.submitOrderBtn.textContent = "更新訂單";
+    });
+
+    document.getElementById("adminOpenBtn").addEventListener("click", () => {
+      els.loginModal.classList.add("show");
+      els.adminPassword.value = "";
+      els.loginNotice.textContent = "";
+      setTimeout(() => els.adminPassword.focus(), 50);
+    });
+
+    document.getElementById("cancelLoginBtn").addEventListener("click", () => {
+      els.loginModal.classList.remove("show");
+    });
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      if (els.adminPassword.value !== "1234") {
+        els.loginNotice.textContent = "密碼錯誤";
+        return;
+      }
+      els.loginModal.classList.remove("show");
+      els.adminPanel.classList.add("show");
+      els.adminPanel.scrollIntoView({ behavior: "smooth" });
+    });
+
+    document.getElementById("logoutAdminBtn").addEventListener("click", () => {
+      els.adminPanel.classList.remove("show");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    document.getElementById("saveSettingsBtn").addEventListener("click", () => {
+      state.restaurant = els.restaurantInput.value.trim() || "今日便當店";
+      state.deadline = els.deadlineInput.value || "10:30";
+      state.subsidy = Math.max(Number(els.subsidyInput.value || 0), 0);
+      state.isOpen = els.openSelect.value === "true";
+
+      Object.values(state.orders).forEach(order => {
+        order.company = Math.min(order.total, state.subsidy);
+        order.selfPay = Math.max(order.total - state.subsidy, 0);
+      });
+
+      persist();
+      renderAll();
+      alert("設定已儲存");
+    });
+
+    document.getElementById("clearOrdersBtn").addEventListener("click", () => {
+      if (!confirm("確定要清除全部訂單嗎？")) return;
+      state.orders = {};
+      persist();
+      els.employeeSelect.value = "";
+      els.mealInput.value = "";
+      els.amountInput.value = "";
+      els.noteInput.value = "";
+      els.submitOrderBtn.textContent = "送出訂單";
+      els.notice.textContent = "";
+      renderAll();
+    });
+
+    document.getElementById("imageUpload").addEventListener("change", event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (file.size > 4 * 1024 * 1024) {
+        alert("圖片太大，請選擇 4MB 以下的圖片");
+        event.target.value = "";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        state.image = e.target.result;
+        persist();
+        renderAll();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById("menuImageWrap").addEventListener("click", () => {
+      if (state.image) els.imageModal.classList.add("show");
+    });
+
+    els.imageModal.addEventListener("click", () => {
+      els.imageModal.classList.remove("show");
+    });
+
+    els.loginModal.addEventListener("click", event => {
+      if (event.target === els.loginModal) els.loginModal.classList.remove("show");
+    });
+
+    function showError(message) {
+      els.notice.textContent = message;
+      els.notice.className = "notice error";
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
