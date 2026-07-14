@@ -750,33 +750,66 @@
       recalc();
     });
 
-    els.submitOrderBtn.addEventListener("click", () => {
-      const name = els.employeeSelect.value;
-      const meal = els.mealInput.value.trim();
-      const total = Number(els.amountInput.value || 0);
-      const note = els.noteInput.value.trim();
+els.submitOrderBtn.addEventListener("click", async () => {
 
-      if (!state.isOpen) return showError("目前已關閉點餐");
-      if (!name) return showError("請先選擇姓名");
-      if (!meal) return showError("請輸入想吃的餐點");
-      if (!Number.isFinite(total) || total <= 0) return showError("請輸入正確的餐點金額");
-      if (total > 300 && !confirm(`你輸入的金額是 ${total} 元，確定正確嗎？`)) return;
+  const name = els.employeeSelect.value;
+  const meal = els.mealInput.value.trim();
+  const total = Number(els.amountInput.value || 0);
+  const note = els.noteInput.value.trim();
 
-      const company = Math.min(total, Number(state.subsidy));
-      const selfPay = Math.max(total - Number(state.subsidy), 0);
-      const isUpdate = Boolean(state.orders[name]);
+  if (!name) {
+    return showError("請先選擇姓名");
+  }
 
-      state.orders[name] = {
-        name, meal, note, total, company, selfPay,
-        updatedAt: new Date().toLocaleString("zh-TW")
-      };
+  if (!meal) {
+    return showError("請輸入餐點");
+  }
 
-      persist();
-      renderOrders();
-      els.notice.textContent = `${name} 已${isUpdate ? "更新" : "完成"}點餐！${selfPay > 0 ? ` 需自行支付 ${selfPay} 元` : ""}`;
-      els.notice.className = "notice ok";
-      els.submitOrderBtn.textContent = "更新訂單";
-    });
+  if (total <= 0) {
+    return showError("請輸入金額");
+  }
+
+  try {
+
+    const res = await fetch(
+      "https://script.google.com/macros/s/AKfycbwNVrNortMK1lZB5ZxndDEC0FXTO35noHqOgsGa_oQkN6piTsC1-QTwzBmXGwzCjp3UFw/exec",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: name,
+          meal: meal,
+          price: total,
+          note: note
+        })
+      }
+    );
+
+    if (res.ok) {
+
+      alert("✅ 訂單已送出");
+
+      els.mealInput.value = "";
+      els.amountInput.value = "";
+      els.noteInput.value = "";
+
+    } else {
+
+      alert("送出失敗");
+
+    }
+
+  } catch (e) {
+
+    console.log(e);
+
+    alert("送出失敗");
+
+  }
+
+});
 
     document.getElementById("adminOpenBtn").addEventListener("click", () => {
       els.loginModal.classList.add("show");
