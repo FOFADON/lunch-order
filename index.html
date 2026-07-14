@@ -178,7 +178,7 @@
       transition: .2s;
     }
 
-    select:focus, input:focus {
+    select:focus, input:focus, textarea:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(155,95,57,.12);
     }
@@ -751,65 +751,93 @@
     });
 
 els.submitOrderBtn.addEventListener("click", async () => {
+      const name = els.employeeSelect.value;
+      const meal = els.mealInput.value.trim();
+      const total = Number(els.amountInput.value || 0);
+      const note = els.noteInput.value.trim();
 
-  const name = els.employeeSelect.value;
-  const meal = els.mealInput.value.trim();
-  const total = Number(els.amountInput.value || 0);
-  const note = els.noteInput.value.trim();
+      if (!state.isOpen) return showError("目前已關閉點餐");
+      if (!name) return showError("請先選擇姓名");
+      if (!meal) return showError("請輸入餐點");
+      if (!Number.isFinite(total) || total <= 0) return showError("請輸入正確金額");
 
-  if (!name) {
-    return showError("請先選擇姓名");
-  }
-
-  if (!meal) {
-    return showError("請輸入餐點");
-  }
-
-  if (total <= 0) {
-    return showError("請輸入金額");
-  }
-
-  try {
-
-    const res = await fetch(
-      "https://script.google.com/macros/s/AKfycbzoM9_TPHWF1MmAvJFYt8sHZmBztiO-OvGUn4YZoCFB7KaChvqqnHQexjWp8JZxgYb-/exec",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name: name,
-          meal: meal,
-          price: total,
-          note: note
-        })
+      if (total > 300 && !confirm(`你輸入的金額是 ${total} 元，確定正確嗎？`)) {
+        return;
       }
-    );
 
-    if (res.ok) {
+      const company = Math.min(total, Number(state.subsidy || 150));
+      const selfPay = Math.max(total - Number(state.subsidy || 150), 0);
 
-      alert("✅ 訂單已送出");
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("meal", meal);
+      formData.append("price", String(total));
+      formData.append("note", note);
+      formData.append("company", String(company));
+      formData.append("selfPay", String(selfPay));
 
-      els.mealInput.value = "";
-      els.amountInput.value = "";
-      els.noteInput.value = "";
+      els.submitOrderBtn.disabled = true;
+      els.submitOrderBtn.textContent = "送出中…";
+      els.notice.textContent = "正在送出訂單";
+      els.notice.className = "notice";
 
-    } else {
+      try {
+        const res = await fetch(
+          "https://script.google.com/macros/s/AKfycbzoM9_TPHWF1MmAvJFYt8sHZmBztiO-OvGUn4YZoCFB7KaChvqqnHQexjWp8JZxgYb-/exec",
+          {
+            method: "POST",
+            body: formData
+          }
+        );
 
-      alert("送出失敗");
+        const resultText = await res.text();
 
-    }
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${resultText}`);
+        }
 
-  } catch (e) {
+        let result = {};
+        try {
+          result = JSON.parse(resultText);
+        } catch (_) {
+          result = { success: true };
+        }
 
-    console.log(e);
+        if (result.success === false) {
+          throw new Error(result.message || "Google Sheet 寫入失敗");
+        }
 
-    alert("送出失敗");
+        state.orders[name] = {
+          name,
+          meal,
+          note,
+          total,
+          company,
+          selfPay,
+          updatedAt: new Date().toLocaleString("zh-TW")
+        };
+        persist();
+        renderOrders();
 
-  }
+        els.notice.textContent =
+          `✅ ${name} 的訂單已送出` +
+          (selfPay > 0 ? `，需自行支付 ${selfPay} 元` : "");
+        els.notice.className = "notice ok";
 
-});
+        els.mealInput.value = "";
+        els.amountInput.value = "";
+        els.noteInput.value = "";
+        recalc();
+
+      } catch (error) {
+        console.error(error);
+        els.notice.textContent = "❌ 送出失敗，請稍後再試";
+        els.notice.className = "notice error";
+      } finally {
+        els.submitOrderBtn.disabled = !state.isOpen;
+        els.submitOrderBtn.textContent = "送出訂單";
+      }
+    });
 
     document.getElementById("adminOpenBtn").addEventListener("click", () => {
       els.loginModal.classList.add("show");
