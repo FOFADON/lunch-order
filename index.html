@@ -898,6 +898,10 @@
     let previewDragStartY = 0;
     let previewWasDragged = false;
     let lastPreviewTapAt = 0;
+    const previewPointers = new Map();
+    let previewPinchStartDistance = 0;
+    let previewPinchStartWidth = 0;
+    let previewPinching = false;
 
     function persist() {
       localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
@@ -1369,6 +1373,22 @@ els.submitOrderBtn.addEventListener("click", async () => {
 
     function beginPreviewDrag(event) {
       if (event.currentTarget === els.imageDragHandle && event.target.closest("button, a")) return;
+      previewPointers.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY
+      });
+      if (previewPointers.size === 2) {
+        const points = [...previewPointers.values()];
+        previewPinchStartDistance = Math.hypot(
+          points[0].x - points[1].x,
+          points[0].y - points[1].y
+        );
+        previewPinchStartWidth = els.imageModal.getBoundingClientRect().width;
+        previewPinching = true;
+        previewWasDragged = true;
+        event.preventDefault();
+        return;
+      }
       const rect = els.imageModal.getBoundingClientRect();
       previewDragPointerId = event.pointerId;
       previewDragOffsetX = event.clientX - rect.left;
@@ -1383,6 +1403,32 @@ els.submitOrderBtn.addEventListener("click", async () => {
     }
 
     function movePreviewWindow(event) {
+      if (!previewPointers.has(event.pointerId)) return;
+      previewPointers.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY
+      });
+      if (previewPointers.size >= 2 && previewPinchStartDistance > 0) {
+        const points = [...previewPointers.values()].slice(0, 2);
+        const distance = Math.hypot(
+          points[0].x - points[1].x,
+          points[0].y - points[1].y
+        );
+        const viewport = window.visualViewport;
+        const viewportWidth = viewport ? viewport.width : window.innerWidth;
+        const width = Math.min(
+          Math.max(previewPinchStartWidth * distance / previewPinchStartDistance, 140),
+          viewportWidth - 16
+        );
+        els.imageModal.classList.remove("compact", "zoomed");
+        els.imageModal.style.width = `${width}px`;
+        previewWindowCompact = false;
+        els.resizeMenuImageBtn.textContent = "縮小";
+        previewWasDragged = true;
+        requestAnimationFrame(keepPreviewInViewport);
+        event.preventDefault();
+        return;
+      }
       if (event.pointerId !== previewDragPointerId) return;
       if (
         Math.abs(event.clientX - previewDragStartX) > 6 ||
@@ -1412,9 +1458,14 @@ els.submitOrderBtn.addEventListener("click", async () => {
     }
 
     function endPreviewDrag(event) {
-      if (event.pointerId !== previewDragPointerId) return;
-      previewDragPointerId = null;
-      if (event.target === els.largeImage && !previewWasDragged) {
+      if (!previewPointers.has(event.pointerId)) return;
+      previewPointers.delete(event.pointerId);
+      const endedDragPointer = event.pointerId === previewDragPointerId;
+      if (endedDragPointer) previewDragPointerId = null;
+      if (previewPointers.size < 2) {
+        previewPinchStartDistance = 0;
+      }
+      if (event.target === els.largeImage && endedDragPointer && !previewWasDragged && !previewPinching) {
         const now = Date.now();
         if (now - lastPreviewTapAt < 350) {
           togglePreviewZoom();
@@ -1423,6 +1474,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
           lastPreviewTapAt = now;
         }
       }
+      if (previewPointers.size === 0) previewPinching = false;
       if (
         event.currentTarget &&
         event.currentTarget.hasPointerCapture &&
@@ -1453,7 +1505,9 @@ els.submitOrderBtn.addEventListener("click", async () => {
     }
 
     function togglePreviewZoom() {
-      const willZoom = !els.imageModal.classList.contains("zoomed");
+      const hasCustomSize = Boolean(els.imageModal.style.width);
+      const willZoom = !hasCustomSize && !els.imageModal.classList.contains("zoomed");
+      els.imageModal.style.width = "";
       els.imageModal.classList.toggle("zoomed", willZoom);
       if (willZoom) {
         previewWindowCompact = false;
@@ -1483,6 +1537,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
       els.imageModal.classList.toggle("compact", previewWindowCompact);
       if (previewWindowCompact) {
         els.imageModal.classList.remove("zoomed");
+        els.imageModal.style.width = "";
       }
       els.resizeMenuImageBtn.textContent = previewWindowCompact ? "還原" : "縮小";
       requestAnimationFrame(keepPreviewInViewport);
