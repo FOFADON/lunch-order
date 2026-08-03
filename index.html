@@ -516,7 +516,9 @@
 
     .image-pan-stage {
       width: 100%;
-      height: calc(100% - 48px);
+      height: auto;
+      flex: 1;
+      min-height: 0;
       overflow: hidden;
       display: grid;
       place-items: center;
@@ -528,37 +530,46 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      touch-action: none;
       user-select: none;
       -webkit-user-drag: none;
-      transform-origin: center center;
-      will-change: transform;
     }
 
     .image-modal {
       position: fixed;
-      inset: 12px auto 12px max(12px, calc(50vw - 500px));
-      width: min(48vw, 480px);
-      height: auto;
+      inset: 12px auto auto 12px;
+      width: min(44vw, 480px);
+      height: min(72vh, 620px);
       margin: 0;
       padding: 10px;
       background: rgba(28,22,18,.92);
       border-radius: 16px;
       z-index: 100;
+      box-shadow: 0 18px 60px rgba(0,0,0,.32);
+    }
+
+    .image-modal.compact {
+      width: min(280px, calc(100vw - 16px));
+      height: 210px;
     }
 
     .image-reference-card {
       width: min(920px, 100%);
       height: 100%;
       margin: 0 auto;
+      display: flex;
+      flex-direction: column;
     }
 
     .image-reference-actions {
-      height: 42px;
+      min-height: 42px;
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       align-items: center;
       gap: 8px;
+      padding-bottom: 6px;
+      cursor: move;
+      touch-action: none;
     }
 
     .image-reference-actions button,
@@ -576,12 +587,12 @@
       .grid { grid-template-columns: 1fr; }
       .admin-grid { grid-template-columns: 1fr; }
       .image-modal {
-        position: relative;
-        inset: auto;
-        width: 100%;
+        position: fixed;
+        inset: 10px auto auto 6vw;
+        width: 88vw;
         height: 280px;
-        margin: 0 0 16px;
-        z-index: 1;
+        margin: 0;
+        z-index: 100;
       }
       .order-item-row {
         grid-template-columns: minmax(0, 1fr) 82px 42px;
@@ -633,11 +644,11 @@
 
         <div class="modal image-modal" id="imageModal">
           <div class="image-reference-card">
-            <div class="image-reference-actions">
+            <div class="image-reference-actions" id="imageDragHandle" title="按住這裡拖曳視窗">
               <button id="previousMenuImageBtn" type="button">← 上一張</button>
               <a id="openMenuImageLink" href="#" target="_blank" rel="noopener">另開原圖</a>
               <button id="nextMenuImageBtn" type="button">下一張 →</button>
-              <button id="resetMenuImageBtn" type="button">重設</button>
+              <button id="resizeMenuImageBtn" type="button">縮小</button>
               <button id="closeMenuImageBtn" type="button">關閉</button>
             </div>
             <div class="image-pan-stage">
@@ -845,17 +856,17 @@
       openMenuImageLink: document.getElementById("openMenuImageLink"),
       previousMenuImageBtn: document.getElementById("previousMenuImageBtn"),
       nextMenuImageBtn: document.getElementById("nextMenuImageBtn"),
-      resetMenuImageBtn: document.getElementById("resetMenuImageBtn"),
+      resizeMenuImageBtn: document.getElementById("resizeMenuImageBtn"),
+      imageDragHandle: document.getElementById("imageDragHandle"),
       closeMenuImageBtn: document.getElementById("closeMenuImageBtn")
     };
 
     let activePreviewUrls = [];
     let activePreviewIndex = 0;
-    let previewScale = 1;
-    let previewTranslateX = 0;
-    let previewTranslateY = 0;
-    const previewPointers = new Map();
-    let previousPinchDistance = 0;
+    let previewWindowCompact = false;
+    let previewDragPointerId = null;
+    let previewDragOffsetX = 0;
+    let previewDragOffsetY = 0;
 
     function persist() {
       localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
@@ -1322,76 +1333,47 @@ els.submitOrderBtn.addEventListener("click", async () => {
       els.openMenuImageLink.href = url;
       els.previousMenuImageBtn.disabled = activePreviewUrls.length < 2;
       els.nextMenuImageBtn.disabled = activePreviewUrls.length < 2;
-      resetImageTransform();
       els.imageModal.classList.add("show");
     }
 
-    function applyImageTransform() {
-      els.largeImage.style.transform =
-        `translate(${previewTranslateX}px, ${previewTranslateY}px) scale(${previewScale})`;
-    }
-
-    function resetImageTransform() {
-      previewScale = 1;
-      previewTranslateX = 0;
-      previewTranslateY = 0;
-      previousPinchDistance = 0;
-      previewPointers.clear();
-      applyImageTransform();
-    }
-
-    function pointerDistance() {
-      const points = [...previewPointers.values()];
-      if (points.length < 2) return 0;
-      return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
-    }
-
-    els.largeImage.addEventListener("pointerdown", event => {
-      els.largeImage.setPointerCapture(event.pointerId);
-      previewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      if (previewPointers.size === 2) previousPinchDistance = pointerDistance();
+    els.imageDragHandle.addEventListener("pointerdown", event => {
+      if (event.target.closest("button, a")) return;
+      const rect = els.imageModal.getBoundingClientRect();
+      previewDragPointerId = event.pointerId;
+      previewDragOffsetX = event.clientX - rect.left;
+      previewDragOffsetY = event.clientY - rect.top;
+      els.imageDragHandle.setPointerCapture(event.pointerId);
     });
 
-    els.largeImage.addEventListener("pointermove", event => {
-      const previous = previewPointers.get(event.pointerId);
-      if (!previous) return;
-
-      previewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
-      if (previewPointers.size >= 2) {
-        const distance = pointerDistance();
-        if (previousPinchDistance > 0) {
-          previewScale = Math.min(5, Math.max(1, previewScale * distance / previousPinchDistance));
-          if (previewScale === 1) {
-            previewTranslateX = 0;
-            previewTranslateY = 0;
-          }
-          applyImageTransform();
-        }
-        previousPinchDistance = distance;
-      } else if (previewScale > 1) {
-        previewTranslateX += event.clientX - previous.x;
-        previewTranslateY += event.clientY - previous.y;
-        applyImageTransform();
-      }
+    els.imageDragHandle.addEventListener("pointermove", event => {
+      if (event.pointerId !== previewDragPointerId) return;
+      const viewport = window.visualViewport;
+      const viewportWidth = viewport ? viewport.width : window.innerWidth;
+      const viewportHeight = viewport ? viewport.height : window.innerHeight;
+      const viewportLeft = viewport ? viewport.offsetLeft : 0;
+      const viewportTop = viewport ? viewport.offsetTop : 0;
+      const rect = els.imageModal.getBoundingClientRect();
+      const maxLeft = Math.max(viewportLeft + 8, viewportLeft + viewportWidth - rect.width - 8);
+      const maxTop = Math.max(viewportTop + 8, viewportTop + viewportHeight - rect.height - 8);
+      const left = Math.min(
+        maxLeft,
+        Math.max(viewportLeft + 8, event.clientX - previewDragOffsetX)
+      );
+      const top = Math.min(
+        maxTop,
+        Math.max(viewportTop + 8, event.clientY - previewDragOffsetY)
+      );
+      els.imageModal.style.inset = "auto";
+      els.imageModal.style.left = `${left}px`;
+      els.imageModal.style.top = `${top}px`;
     });
 
-    function endPreviewPointer(event) {
-      previewPointers.delete(event.pointerId);
-      previousPinchDistance = previewPointers.size === 2 ? pointerDistance() : 0;
+    function endPreviewDrag(event) {
+      if (event.pointerId === previewDragPointerId) previewDragPointerId = null;
     }
 
-    els.largeImage.addEventListener("pointerup", endPreviewPointer);
-    els.largeImage.addEventListener("pointercancel", endPreviewPointer);
-
-    els.largeImage.addEventListener("dblclick", () => {
-      if (previewScale > 1) {
-        resetImageTransform();
-      } else {
-        previewScale = 2;
-        applyImageTransform();
-      }
-    });
+    els.imageDragHandle.addEventListener("pointerup", endPreviewDrag);
+    els.imageDragHandle.addEventListener("pointercancel", endPreviewDrag);
 
     els.previousMenuImageBtn.addEventListener("click", () => {
       openImageReference(activePreviewIndex - 1);
@@ -1401,7 +1383,11 @@ els.submitOrderBtn.addEventListener("click", async () => {
       openImageReference(activePreviewIndex + 1);
     });
 
-    els.resetMenuImageBtn.addEventListener("click", resetImageTransform);
+    els.resizeMenuImageBtn.addEventListener("click", () => {
+      previewWindowCompact = !previewWindowCompact;
+      els.imageModal.classList.toggle("compact", previewWindowCompact);
+      els.resizeMenuImageBtn.textContent = previewWindowCompact ? "還原" : "縮小";
+    });
 
     els.closeMenuImageBtn.addEventListener("click", () => {
       els.imageModal.classList.remove("show");
