@@ -127,12 +127,57 @@
       cursor: zoom-in;
     }
 
-    .menu-image-wrap img {
+    .menu-images {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      gap: 8px;
+      padding: 8px;
+    }
+
+    .menu-images.count-2 { grid-template-columns: repeat(2, 1fr); }
+    .menu-images.count-3 { grid-template-columns: repeat(3, 1fr); }
+
+    .menu-images img {
       width: 100%;
       height: 100%;
       object-fit: contain;
-      display: none;
+      min-width: 0;
+      cursor: zoom-in;
+      border-radius: 12px;
     }
+
+    .menu-library {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .menu-library-item {
+      position: relative;
+      border: 2px solid var(--line);
+      border-radius: 14px;
+      padding: 8px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .menu-library-item.selected {
+      border-color: var(--accent);
+      background: #fff8f2;
+    }
+
+    .menu-library-item img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: contain;
+      background: #f4eee8;
+      border-radius: 9px;
+    }
+
+    .menu-library-item input { position: absolute; top: 14px; left: 14px; }
+    .menu-library-name { font-size: 12px; margin-top: 6px; overflow-wrap: anywhere; }
 
     .image-placeholder {
       text-align: center;
@@ -478,7 +523,7 @@
         </div>
 
         <div class="menu-image-wrap" id="menuImageWrap">
-          <img id="menuImage" alt="店家菜單" />
+          <div class="menu-images" id="menuImages"></div>
           <div class="image-placeholder" id="imagePlaceholder">
             <div class="emoji">🖼️</div>
             <div>尚未上傳店家菜單</div>
@@ -574,9 +619,20 @@
       </div>
 
       <div class="admin-actions">
-        <button class="small-btn primary" id="uploadMenuBtn">上傳並覆蓋共用菜單</button>
+        <button class="small-btn primary" id="uploadMenuBtn">上傳到菜單圖片庫</button>
       </div>
       <div class="notice" id="uploadNotice"></div>
+
+      <div class="field" style="margin-top:18px">
+        <label>歷史菜單圖片（最多選擇 3 張）</label>
+        <div class="meta">勾選今天要顯示的圖片，再按「套用所選菜單」。</div>
+        <div class="menu-library" id="menuLibrary"></div>
+        <div class="admin-actions">
+          <button class="small-btn primary" id="applyMenusBtn">套用所選菜單</button>
+          <button class="small-btn" id="refreshMenusBtn">重新整理圖片庫</button>
+        </div>
+        <div class="notice" id="libraryNotice"></div>
+      </div>
 
       <div class="admin-actions">
         <button class="small-btn primary" id="saveSettingsBtn">儲存設定</button>
@@ -632,6 +688,7 @@
     const MENU_IMAGE_URL = "./menu.jpg";
     let adminUploadPassword = "";
     let selectedMenuFile = null;
+    let menuLibraryState = { images: [], activeImages: [] };
 
     const state = JSON.parse(localStorage.getItem("lunchTextOrderState")) || {
       restaurant: "今日便當店",
@@ -646,7 +703,7 @@
       restaurantNameText: document.getElementById("restaurantNameText"),
       deadlineText: document.getElementById("deadlineText"),
       openStatus: document.getElementById("openStatus"),
-      menuImage: document.getElementById("menuImage"),
+      menuImages: document.getElementById("menuImages"),
       imagePlaceholder: document.getElementById("imagePlaceholder"),
       employeeSelect: document.getElementById("employeeSelect"),
       mealInput: document.getElementById("mealInput"),
@@ -670,6 +727,10 @@
       uploadMenuBtn: document.getElementById("uploadMenuBtn"),
       uploadNotice: document.getElementById("uploadNotice"),
       selectedImageInfo: document.getElementById("selectedImageInfo"),
+      menuLibrary: document.getElementById("menuLibrary"),
+      applyMenusBtn: document.getElementById("applyMenusBtn"),
+      refreshMenusBtn: document.getElementById("refreshMenusBtn"),
+      libraryNotice: document.getElementById("libraryNotice"),
       imageModal: document.getElementById("imageModal"),
       largeImage: document.getElementById("largeImage")
     };
@@ -854,6 +915,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
       adminUploadPassword = password;
       els.loginModal.classList.remove("show");
       els.adminPanel.classList.add("show");
+      loadMenuLibrary();
       els.adminPanel.scrollIntoView({ behavior: "smooth" });
     });
 
@@ -979,9 +1041,8 @@ els.submitOrderBtn.addEventListener("click", async () => {
           "✅ 圖片已送出，約 10～60 秒後顯示最新菜單";
         els.uploadNotice.className = "notice ok";
 
-        setTimeout(loadSharedMenuImage, 8000);
-        setTimeout(loadSharedMenuImage, 20000);
-        setTimeout(loadSharedMenuImage, 45000);
+        setTimeout(() => { loadSharedMenuImage(); loadMenuLibrary(); }, 5000);
+        setTimeout(() => { loadSharedMenuImage(); loadMenuLibrary(); }, 12000);
 
       } catch (error) {
         console.error(error);
@@ -990,14 +1051,15 @@ els.submitOrderBtn.addEventListener("click", async () => {
         els.uploadNotice.className = "notice error";
       } finally {
         els.uploadMenuBtn.disabled = false;
-        els.uploadMenuBtn.textContent = "上傳並覆蓋共用菜單";
+        els.uploadMenuBtn.textContent = "上傳到菜單圖片庫";
       }
     });
 
-    document.getElementById("menuImageWrap").addEventListener("click", () => {
-      if (els.menuImage.style.display !== "none" && els.menuImage.src) {
-        els.imageModal.classList.add("show");
-      }
+    document.getElementById("menuImageWrap").addEventListener("click", event => {
+      const image = event.target.closest("img");
+      if (!image) return;
+      els.largeImage.src = image.src;
+      els.imageModal.classList.add("show");
     });
 
     els.imageModal.addEventListener("click", () => {
@@ -1008,24 +1070,111 @@ els.submitOrderBtn.addEventListener("click", async () => {
       if (event.target === els.loginModal) els.loginModal.classList.remove("show");
     });
 
-    function loadSharedMenuImage() {
-      const imageUrl = `${MENU_IMAGE_URL}?v=${Date.now()}`;
-      const tester = new Image();
-
-      tester.onload = () => {
-        els.menuImage.src = imageUrl;
-        els.largeImage.src = imageUrl;
-        els.menuImage.style.display = "block";
-        els.imagePlaceholder.style.display = "none";
-      };
-
-      tester.onerror = () => {
-        els.menuImage.style.display = "none";
-        els.imagePlaceholder.style.display = "block";
-      };
-
-      tester.src = imageUrl;
+    async function loadSharedMenuImage() {
+      try {
+        const response = await fetch(`${WEB_APP_URL}?action=listMenus&t=${Date.now()}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || "無法讀取菜單");
+        menuLibraryState = data;
+        renderActiveMenuImages(data.activeImages || []);
+      } catch (error) {
+        console.warn("圖片庫讀取失敗，改用 menu.jpg", error);
+        renderActiveMenuImages([MENU_IMAGE_URL]);
+      }
     }
+
+    function imageUrlForPath(path) {
+      const cleanPath = String(path || "").replace(/^\.\//, "");
+      return `./${cleanPath}?v=${Date.now()}`;
+    }
+
+    function renderActiveMenuImages(paths) {
+      const activePaths = paths.length ? paths.slice(0, 3) : [MENU_IMAGE_URL];
+      els.menuImages.innerHTML = "";
+      els.menuImages.className = `menu-images count-${activePaths.length}`;
+      let loadedCount = 0;
+
+      activePaths.forEach((path, index) => {
+        const image = document.createElement("img");
+        image.alt = `店家菜單 ${index + 1}`;
+        image.onload = () => {
+          loadedCount += 1;
+          els.imagePlaceholder.style.display = "none";
+        };
+        image.onerror = () => {
+          image.remove();
+          if (!loadedCount && !els.menuImages.children.length) {
+            els.imagePlaceholder.style.display = "block";
+          }
+        };
+        image.src = imageUrlForPath(path);
+        els.menuImages.appendChild(image);
+      });
+    }
+
+    async function loadMenuLibrary() {
+      els.libraryNotice.textContent = "正在讀取圖片庫…";
+      els.libraryNotice.className = "notice";
+      try {
+        const response = await fetch(`${WEB_APP_URL}?action=listMenus&t=${Date.now()}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || "讀取失敗");
+        menuLibraryState = data;
+        renderMenuLibrary();
+        els.libraryNotice.textContent = data.images.length ? "" : "尚無歷史圖片，請先上傳一張。";
+      } catch (error) {
+        els.libraryNotice.textContent = `❌ 圖片庫讀取失敗：${error.message}`;
+        els.libraryNotice.className = "notice error";
+      }
+    }
+
+    function renderMenuLibrary() {
+      els.menuLibrary.innerHTML = "";
+      (menuLibraryState.images || []).slice().reverse().forEach(item => {
+        const label = document.createElement("label");
+        label.className = "menu-library-item";
+        const checked = (menuLibraryState.activeImages || []).includes(item.path);
+        if (checked) label.classList.add("selected");
+        label.innerHTML = `
+          <input type="checkbox" value="${escapeHtml(item.path)}" ${checked ? "checked" : ""}>
+          <img src="${imageUrlForPath(item.path)}" alt="${escapeHtml(item.name || "菜單圖片")}">
+          <div class="menu-library-name">${escapeHtml(item.name || item.path)}</div>
+        `;
+        label.querySelector("input").addEventListener("change", event => {
+          const selected = els.menuLibrary.querySelectorAll('input:checked');
+          if (selected.length > 3) {
+            event.target.checked = false;
+            alert("最多只能選擇 3 張菜單圖片");
+          }
+          label.classList.toggle("selected", event.target.checked);
+        });
+        els.menuLibrary.appendChild(label);
+      });
+    }
+
+    els.refreshMenusBtn.addEventListener("click", loadMenuLibrary);
+
+    els.applyMenusBtn.addEventListener("click", async () => {
+      const paths = [...els.menuLibrary.querySelectorAll('input:checked')].map(input => input.value);
+      if (!paths.length) return alert("請至少選擇一張菜單圖片");
+      els.applyMenusBtn.disabled = true;
+      els.libraryNotice.textContent = "正在更新目前菜單…";
+      try {
+        const formData = new FormData();
+        formData.append("action", "setActiveMenus");
+        formData.append("password", adminUploadPassword);
+        formData.append("paths", JSON.stringify(paths));
+        await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: formData });
+        els.libraryNotice.textContent = "✅ 已送出，約幾秒後顯示所選菜單";
+        els.libraryNotice.className = "notice ok";
+        setTimeout(() => { loadSharedMenuImage(); loadMenuLibrary(); }, 5000);
+      } catch (error) {
+        els.libraryNotice.textContent = `❌ 更新失敗：${error.message}`;
+        els.libraryNotice.className = "notice error";
+      } finally {
+        els.applyMenusBtn.disabled = false;
+      }
+    });
 
     async function convertImageToJpegBase64(file) {
       const image = await loadImageFile(file);
