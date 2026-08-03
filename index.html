@@ -514,12 +514,25 @@
       flex: 1;
     }
 
-    .image-modal img {
+    .image-pan-stage {
       width: 100%;
       height: calc(100% - 48px);
-      object-fit: contain;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
       border-radius: 18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      background: #171411;
+    }
+
+    .image-modal img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-drag: none;
+      transform-origin: center center;
+      will-change: transform;
     }
 
     .image-modal {
@@ -624,9 +637,12 @@
               <button id="previousMenuImageBtn" type="button">← 上一張</button>
               <a id="openMenuImageLink" href="#" target="_blank" rel="noopener">另開原圖</a>
               <button id="nextMenuImageBtn" type="button">下一張 →</button>
+              <button id="resetMenuImageBtn" type="button">重設</button>
               <button id="closeMenuImageBtn" type="button">關閉</button>
             </div>
-            <img id="largeImage" alt="菜單參考圖片" />
+            <div class="image-pan-stage">
+              <img id="largeImage" alt="菜單參考圖片" />
+            </div>
           </div>
         </div>
 
@@ -829,11 +845,17 @@
       openMenuImageLink: document.getElementById("openMenuImageLink"),
       previousMenuImageBtn: document.getElementById("previousMenuImageBtn"),
       nextMenuImageBtn: document.getElementById("nextMenuImageBtn"),
+      resetMenuImageBtn: document.getElementById("resetMenuImageBtn"),
       closeMenuImageBtn: document.getElementById("closeMenuImageBtn")
     };
 
     let activePreviewUrls = [];
     let activePreviewIndex = 0;
+    let previewScale = 1;
+    let previewTranslateX = 0;
+    let previewTranslateY = 0;
+    const previewPointers = new Map();
+    let previousPinchDistance = 0;
 
     function persist() {
       localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
@@ -1300,8 +1322,76 @@ els.submitOrderBtn.addEventListener("click", async () => {
       els.openMenuImageLink.href = url;
       els.previousMenuImageBtn.disabled = activePreviewUrls.length < 2;
       els.nextMenuImageBtn.disabled = activePreviewUrls.length < 2;
+      resetImageTransform();
       els.imageModal.classList.add("show");
     }
+
+    function applyImageTransform() {
+      els.largeImage.style.transform =
+        `translate(${previewTranslateX}px, ${previewTranslateY}px) scale(${previewScale})`;
+    }
+
+    function resetImageTransform() {
+      previewScale = 1;
+      previewTranslateX = 0;
+      previewTranslateY = 0;
+      previousPinchDistance = 0;
+      previewPointers.clear();
+      applyImageTransform();
+    }
+
+    function pointerDistance() {
+      const points = [...previewPointers.values()];
+      if (points.length < 2) return 0;
+      return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+    }
+
+    els.largeImage.addEventListener("pointerdown", event => {
+      els.largeImage.setPointerCapture(event.pointerId);
+      previewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (previewPointers.size === 2) previousPinchDistance = pointerDistance();
+    });
+
+    els.largeImage.addEventListener("pointermove", event => {
+      const previous = previewPointers.get(event.pointerId);
+      if (!previous) return;
+
+      previewPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (previewPointers.size >= 2) {
+        const distance = pointerDistance();
+        if (previousPinchDistance > 0) {
+          previewScale = Math.min(5, Math.max(1, previewScale * distance / previousPinchDistance));
+          if (previewScale === 1) {
+            previewTranslateX = 0;
+            previewTranslateY = 0;
+          }
+          applyImageTransform();
+        }
+        previousPinchDistance = distance;
+      } else if (previewScale > 1) {
+        previewTranslateX += event.clientX - previous.x;
+        previewTranslateY += event.clientY - previous.y;
+        applyImageTransform();
+      }
+    });
+
+    function endPreviewPointer(event) {
+      previewPointers.delete(event.pointerId);
+      previousPinchDistance = previewPointers.size === 2 ? pointerDistance() : 0;
+    }
+
+    els.largeImage.addEventListener("pointerup", endPreviewPointer);
+    els.largeImage.addEventListener("pointercancel", endPreviewPointer);
+
+    els.largeImage.addEventListener("dblclick", () => {
+      if (previewScale > 1) {
+        resetImageTransform();
+      } else {
+        previewScale = 2;
+        applyImageTransform();
+      }
+    });
 
     els.previousMenuImageBtn.addEventListener("click", () => {
       openImageReference(activePreviewIndex - 1);
@@ -1310,6 +1400,8 @@ els.submitOrderBtn.addEventListener("click", async () => {
     els.nextMenuImageBtn.addEventListener("click", () => {
       openImageReference(activePreviewIndex + 1);
     });
+
+    els.resetMenuImageBtn.addEventListener("click", resetImageTransform);
 
     els.closeMenuImageBtn.addEventListener("click", () => {
       els.imageModal.classList.remove("show");
