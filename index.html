@@ -1025,11 +1025,15 @@ els.submitOrderBtn.addEventListener("click", async () => {
         els.uploadNotice.textContent = "正在上傳菜單圖片";
         els.uploadNotice.className = "notice";
 
-        await fetch(WEB_APP_URL, {
+        const uploadResponse = await fetch(WEB_APP_URL, {
           method: "POST",
-          mode: "no-cors",
           body: formData
         });
+
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.message || "後端拒絕上傳");
+        }
 
         selectedMenuFile = null;
         els.imageUpload.value = "";
@@ -1164,7 +1168,9 @@ els.submitOrderBtn.addEventListener("click", async () => {
         formData.append("action", "setActiveMenus");
         formData.append("password", adminUploadPassword);
         formData.append("paths", JSON.stringify(paths));
-        await fetch(WEB_APP_URL, { method: "POST", mode: "no-cors", body: formData });
+        const response = await fetch(WEB_APP_URL, { method: "POST", body: formData });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || "後端拒絕更新");
         els.libraryNotice.textContent = "✅ 已送出，約幾秒後顯示所選菜單";
         els.libraryNotice.className = "notice ok";
         setTimeout(() => { loadSharedMenuImage(); loadMenuLibrary(); }, 5000);
