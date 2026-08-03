@@ -7,10 +7,18 @@
       "name": "IMG_3437.jpeg",
       "uploadedAt": "2026-08-03T11:18:26.274Z",
       "sha": "492ac1616bfd977ee76558bd620b3ae2dbdedd4b"
+    },
+    {
+      "id": "d5f78bcf",
+      "path": "menu-images/20260803-192058-d5f78bcf.jpg",
+      "name": "IMG_3288.jpeg",
+      "uploadedAt": "2026-08-03T11:20:58.231Z",
+      "sha": "99b3af251d3d1905c08f66051d5a9390d633b633"
     }
   ],
   "activeImages": [
-    "menu-images/20260803-191826-3a25571a.jpg"
+    "menu-images/20260803-191826-3a25571a.jpg",
+    "menu-images/20260803-192058-d5f78bcf.jpg"
   ],
-  "updatedAt": "2026-08-03T11:19:52.331Z"
+  "updatedAt": "2026-08-03T11:20:58.231Z"
 }
