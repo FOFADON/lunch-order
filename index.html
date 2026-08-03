@@ -559,14 +559,6 @@
       width: min(180px, calc(100vw - 16px));
     }
 
-    .image-modal.zoomed {
-      width: min(560px, 80vw);
-    }
-
-    .image-modal.zoomed img {
-      max-height: 78vh;
-    }
-
     .image-reference-card {
       width: min(920px, 100%);
       height: auto;
@@ -619,8 +611,6 @@
       }
 
       .image-modal img { max-height: 48vh; }
-      .image-modal.zoomed { width: min(92vw, 560px); }
-      .image-modal.zoomed img { max-height: 70vh; }
       .order-item-row {
         grid-template-columns: minmax(0, 1fr) 82px 42px;
       }
@@ -894,14 +884,9 @@
     let previewDragPointerId = null;
     let previewDragOffsetX = 0;
     let previewDragOffsetY = 0;
-    let previewDragStartX = 0;
-    let previewDragStartY = 0;
-    let previewWasDragged = false;
-    let lastPreviewTapAt = 0;
     const previewPointers = new Map();
     let previewPinchStartDistance = 0;
     let previewPinchStartWidth = 0;
-    let previewPinching = false;
 
     function persist() {
       localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
@@ -1384,8 +1369,6 @@ els.submitOrderBtn.addEventListener("click", async () => {
           points[0].y - points[1].y
         );
         previewPinchStartWidth = els.imageModal.getBoundingClientRect().width;
-        previewPinching = true;
-        previewWasDragged = true;
         event.preventDefault();
         return;
       }
@@ -1393,9 +1376,6 @@ els.submitOrderBtn.addEventListener("click", async () => {
       previewDragPointerId = event.pointerId;
       previewDragOffsetX = event.clientX - rect.left;
       previewDragOffsetY = event.clientY - rect.top;
-      previewDragStartX = event.clientX;
-      previewDragStartY = event.clientY;
-      previewWasDragged = false;
       if (event.currentTarget.setPointerCapture) {
         event.currentTarget.setPointerCapture(event.pointerId);
       }
@@ -1420,22 +1400,15 @@ els.submitOrderBtn.addEventListener("click", async () => {
           Math.max(previewPinchStartWidth * distance / previewPinchStartDistance, 140),
           viewportWidth - 16
         );
-        els.imageModal.classList.remove("compact", "zoomed");
+        els.imageModal.classList.remove("compact");
         els.imageModal.style.width = `${width}px`;
         previewWindowCompact = false;
         els.resizeMenuImageBtn.textContent = "縮小";
-        previewWasDragged = true;
         requestAnimationFrame(keepPreviewInViewport);
         event.preventDefault();
         return;
       }
       if (event.pointerId !== previewDragPointerId) return;
-      if (
-        Math.abs(event.clientX - previewDragStartX) > 6 ||
-        Math.abs(event.clientY - previewDragStartY) > 6
-      ) {
-        previewWasDragged = true;
-      }
       const viewport = window.visualViewport;
       const viewportWidth = viewport ? viewport.width : window.innerWidth;
       const viewportHeight = viewport ? viewport.height : window.innerHeight;
@@ -1460,21 +1433,10 @@ els.submitOrderBtn.addEventListener("click", async () => {
     function endPreviewDrag(event) {
       if (!previewPointers.has(event.pointerId)) return;
       previewPointers.delete(event.pointerId);
-      const endedDragPointer = event.pointerId === previewDragPointerId;
-      if (endedDragPointer) previewDragPointerId = null;
+      if (event.pointerId === previewDragPointerId) previewDragPointerId = null;
       if (previewPointers.size < 2) {
         previewPinchStartDistance = 0;
       }
-      if (event.target === els.largeImage && endedDragPointer && !previewWasDragged && !previewPinching) {
-        const now = Date.now();
-        if (now - lastPreviewTapAt < 350) {
-          togglePreviewZoom();
-          lastPreviewTapAt = 0;
-        } else {
-          lastPreviewTapAt = now;
-        }
-      }
-      if (previewPointers.size === 0) previewPinching = false;
       if (
         event.currentTarget &&
         event.currentTarget.hasPointerCapture &&
@@ -1504,19 +1466,6 @@ els.submitOrderBtn.addEventListener("click", async () => {
       els.imageModal.style.top = `${top}px`;
     }
 
-    function togglePreviewZoom() {
-      const hasCustomSize = Boolean(els.imageModal.style.width);
-      const willZoom = !hasCustomSize && !els.imageModal.classList.contains("zoomed");
-      els.imageModal.style.width = "";
-      els.imageModal.classList.toggle("zoomed", willZoom);
-      if (willZoom) {
-        previewWindowCompact = false;
-        els.imageModal.classList.remove("compact");
-        els.resizeMenuImageBtn.textContent = "縮小";
-      }
-      requestAnimationFrame(keepPreviewInViewport);
-    }
-
     els.imageDragHandle.addEventListener("pointerdown", beginPreviewDrag);
     els.largeImage.addEventListener("pointerdown", beginPreviewDrag);
     els.largeImage.addEventListener("contextmenu", event => event.preventDefault());
@@ -1536,7 +1485,6 @@ els.submitOrderBtn.addEventListener("click", async () => {
       previewWindowCompact = !previewWindowCompact;
       els.imageModal.classList.toggle("compact", previewWindowCompact);
       if (previewWindowCompact) {
-        els.imageModal.classList.remove("zoomed");
         els.imageModal.style.width = "";
       }
       els.resizeMenuImageBtn.textContent = previewWindowCompact ? "還原" : "縮小";
