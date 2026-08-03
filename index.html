@@ -537,8 +537,7 @@
       height: 100%;
       max-height: none;
       object-fit: contain;
-      transform: scale(1);
-      transform-origin: center;
+      transform: none;
       image-rendering: auto;
       cursor: grab;
       touch-action: none;
@@ -1375,7 +1374,10 @@ els.submitOrderBtn.addEventListener("click", async () => {
       previewImageScale = 1;
       previewImageTranslateX = 0;
       previewImageTranslateY = 0;
-      applyPreviewImageTransform();
+      els.largeImage.style.left = "0";
+      els.largeImage.style.top = "0";
+      els.largeImage.style.width = "100%";
+      els.largeImage.style.height = "100%";
       els.largeImage.src = url;
       els.openMenuImageLink.href = url;
       els.previousMenuImageBtn.disabled = activePreviewUrls.length < 2;
@@ -1534,9 +1536,18 @@ els.submitOrderBtn.addEventListener("click", async () => {
     }
 
     function applyPreviewImageTransform() {
-      els.largeImage.style.transform =
-        `translate(${previewImageTranslateX}px, ${previewImageTranslateY}px) ` +
-        `scale(${previewImageScale})`;
+      const stage = els.largeImage.parentElement.getBoundingClientRect();
+      const width = stage.width * previewImageScale;
+      const height = stage.height * previewImageScale;
+      const left = previewImageTranslateX -
+        (previewImageScale - 1) * stage.width / 2;
+      const top = previewImageTranslateY -
+        (previewImageScale - 1) * stage.height / 2;
+      els.largeImage.style.transform = "none";
+      els.largeImage.style.width = `${width}px`;
+      els.largeImage.style.height = `${height}px`;
+      els.largeImage.style.left = `${left}px`;
+      els.largeImage.style.top = `${top}px`;
     }
 
     els.imageDragHandle.addEventListener("pointerdown", beginPreviewDrag);
@@ -1689,6 +1700,14 @@ els.submitOrderBtn.addEventListener("click", async () => {
     });
 
     async function convertImageToJpegBase64(file) {
+      const isJpeg =
+        file.type === "image/jpeg" ||
+        /\.jpe?g$/i.test(file.name || "");
+
+      if (isJpeg && file.size <= 4 * 1024 * 1024) {
+        return { base64: await blobToBase64(file), size: file.size };
+      }
+
       const image = await loadImageFile(file);
       const maxSide = 3200;
       const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
