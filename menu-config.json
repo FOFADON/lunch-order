@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "images": [
+    {
+      "id": "3a25571a",
+      "path": "menu-images/20260803-191826-3a25571a.jpg",
+      "name": "IMG_3437.jpeg",
+      "uploadedAt": "2026-08-03T11:18:26.274Z",
+      "sha": "492ac1616bfd977ee76558bd620b3ae2dbdedd4b"
+    }
+  ],
+  "activeImages": [
+    "menu-images/20260803-191826-3a25571a.jpg"
+  ],
+  "updatedAt": "2026-08-03T11:18:26.274Z"
+}
