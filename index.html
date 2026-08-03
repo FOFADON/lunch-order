@@ -539,7 +539,7 @@
       object-fit: contain;
       transform: scale(1);
       transform-origin: center;
-      will-change: transform;
+      image-rendering: auto;
       cursor: grab;
       touch-action: none;
       user-select: none;
@@ -1690,7 +1690,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
 
     async function convertImageToJpegBase64(file) {
       const image = await loadImageFile(file);
-      const maxSide = 1800;
+      const maxSide = 3200;
       const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
       const width = Math.max(1, Math.round(image.width * scale));
       const height = Math.max(1, Math.round(image.height * scale));
@@ -1704,10 +1704,10 @@ els.submitOrderBtn.addEventListener("click", async () => {
       context.fillRect(0, 0, width, height);
       context.drawImage(image.element, 0, 0, width, height);
 
-      let quality = 0.86;
+      let quality = 0.92;
       let blob = await canvasToBlob(canvas, quality);
-      while (blob.size > 2.5 * 1024 * 1024 && quality > 0.55) {
-        quality -= 0.1;
+      while (blob.size > 4 * 1024 * 1024 && quality > 0.72) {
+        quality -= 0.05;
         blob = await canvasToBlob(canvas, quality);
       }
 
