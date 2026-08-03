@@ -516,8 +516,8 @@
 
     .image-pan-stage {
       width: 100%;
-      height: auto;
-      overflow: visible;
+      height: 360px;
+      overflow: hidden;
       display: grid;
       place-items: center;
       background: transparent !important;
@@ -527,9 +527,12 @@
 
     .image-modal img {
       width: 100%;
-      height: auto;
-      max-height: 62vh;
+      height: 100%;
+      max-height: none;
       object-fit: contain;
+      transform: scale(1);
+      transform-origin: center;
+      will-change: transform;
       cursor: grab;
       touch-action: none;
       user-select: none;
@@ -610,7 +613,7 @@
         z-index: 100;
       }
 
-      .image-modal img { max-height: 48vh; }
+      .image-pan-stage { height: 260px; }
       .order-item-row {
         grid-template-columns: minmax(0, 1fr) 82px 42px;
       }
@@ -886,7 +889,8 @@
     let previewDragOffsetY = 0;
     const previewPointers = new Map();
     let previewPinchStartDistance = 0;
-    let previewPinchStartWidth = 0;
+    let previewPinchStartScale = 1;
+    let previewImageScale = 1;
 
     function persist() {
       localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
@@ -1349,6 +1353,8 @@ els.submitOrderBtn.addEventListener("click", async () => {
       if (!activePreviewUrls.length) return;
       activePreviewIndex = (index + activePreviewUrls.length) % activePreviewUrls.length;
       const url = activePreviewUrls[activePreviewIndex];
+      previewImageScale = 1;
+      els.largeImage.style.transform = "scale(1)";
       els.largeImage.src = url;
       els.openMenuImageLink.href = url;
       els.previousMenuImageBtn.disabled = activePreviewUrls.length < 2;
@@ -1368,7 +1374,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
           points[0].x - points[1].x,
           points[0].y - points[1].y
         );
-        previewPinchStartWidth = els.imageModal.getBoundingClientRect().width;
+        previewPinchStartScale = previewImageScale;
         event.preventDefault();
         return;
       }
@@ -1394,17 +1400,11 @@ els.submitOrderBtn.addEventListener("click", async () => {
           points[0].x - points[1].x,
           points[0].y - points[1].y
         );
-        const viewport = window.visualViewport;
-        const viewportWidth = viewport ? viewport.width : window.innerWidth;
-        const width = Math.min(
-          Math.max(previewPinchStartWidth * distance / previewPinchStartDistance, 140),
-          viewportWidth - 16
+        previewImageScale = Math.min(
+          Math.max(previewPinchStartScale * distance / previewPinchStartDistance, 1),
+          4
         );
-        els.imageModal.classList.remove("compact");
-        els.imageModal.style.width = `${width}px`;
-        previewWindowCompact = false;
-        els.resizeMenuImageBtn.textContent = "縮小";
-        requestAnimationFrame(keepPreviewInViewport);
+        els.largeImage.style.transform = `scale(${previewImageScale})`;
         event.preventDefault();
         return;
       }
