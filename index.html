@@ -891,7 +891,11 @@
       const items = getOrderItems();
       els.mealInput.value = items
         .filter(item => item.name)
-        .map(item => `${item.name} ×${item.quantity}${item.note ? `（${item.note}）` : ""}`)
+        .map(item => {
+          const subtotal = item.price * item.quantity;
+          const detail = `${item.name}｜${item.price} 元 × ${item.quantity}｜小計 ${subtotal} 元`;
+          return detail + (item.note ? `（${item.note}）` : "");
+        })
         .join("\n");
       els.amountInput.value = items.reduce(
         (sum, item) => sum + item.price * item.quantity,
