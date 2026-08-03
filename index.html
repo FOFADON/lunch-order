@@ -517,44 +517,48 @@
     .image-pan-stage {
       width: 100%;
       height: auto;
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
+      overflow: visible;
       display: grid;
       place-items: center;
-      border-radius: 18px;
-      background: #171411;
+      background: transparent;
     }
 
     .image-modal img {
       width: 100%;
-      height: 100%;
+      height: auto;
+      max-height: 62vh;
       object-fit: contain;
+      cursor: grab;
+      touch-action: none;
       user-select: none;
       -webkit-user-drag: none;
+      filter: drop-shadow(0 12px 24px rgba(0,0,0,.28));
+    }
+
+    .image-modal img:active {
+      cursor: grabbing;
     }
 
     .image-modal {
       position: fixed;
       inset: 12px auto auto 12px;
-      width: min(44vw, 480px);
-      height: min(72vh, 620px);
+      width: min(320px, 42vw);
+      height: auto;
       margin: 0;
-      padding: 10px;
-      background: rgba(28,22,18,.92);
-      border-radius: 16px;
+      padding: 0;
+      background: transparent;
+      border-radius: 0;
       z-index: 100;
-      box-shadow: 0 18px 60px rgba(0,0,0,.32);
+      box-shadow: none;
     }
 
     .image-modal.compact {
-      width: min(280px, calc(100vw - 16px));
-      height: 210px;
+      width: min(180px, calc(100vw - 16px));
     }
 
     .image-reference-card {
       width: min(920px, 100%);
-      height: 100%;
+      height: auto;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
@@ -567,16 +571,21 @@
       justify-content: center;
       align-items: center;
       gap: 8px;
-      padding-bottom: 6px;
+      padding: 5px;
+      margin-bottom: 6px;
       cursor: move;
       touch-action: none;
+      background: rgba(255,255,255,.94);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.12);
     }
 
     .image-reference-actions button,
     .image-reference-actions a {
-      border: 1px solid rgba(255,255,255,.35);
-      background: rgba(255,255,255,.12);
-      color: white;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--text);
       border-radius: 10px;
       padding: 7px 11px;
       text-decoration: none;
@@ -588,12 +597,14 @@
       .admin-grid { grid-template-columns: 1fr; }
       .image-modal {
         position: fixed;
-        inset: 10px auto auto 6vw;
-        width: 88vw;
-        height: 280px;
+        inset: 10px auto auto 10px;
+        width: min(240px, 64vw);
+        height: auto;
         margin: 0;
         z-index: 100;
       }
+
+      .image-modal img { max-height: 48vh; }
       .order-item-row {
         grid-template-columns: minmax(0, 1fr) 82px 42px;
       }
@@ -1336,16 +1347,16 @@ els.submitOrderBtn.addEventListener("click", async () => {
       els.imageModal.classList.add("show");
     }
 
-    els.imageDragHandle.addEventListener("pointerdown", event => {
-      if (event.target.closest("button, a")) return;
+    function beginPreviewDrag(event) {
+      if (event.currentTarget === els.imageDragHandle && event.target.closest("button, a")) return;
       const rect = els.imageModal.getBoundingClientRect();
       previewDragPointerId = event.pointerId;
       previewDragOffsetX = event.clientX - rect.left;
       previewDragOffsetY = event.clientY - rect.top;
-      els.imageDragHandle.setPointerCapture(event.pointerId);
-    });
+      event.preventDefault();
+    }
 
-    els.imageDragHandle.addEventListener("pointermove", event => {
+    function movePreviewWindow(event) {
       if (event.pointerId !== previewDragPointerId) return;
       const viewport = window.visualViewport;
       const viewportWidth = viewport ? viewport.width : window.innerWidth;
@@ -1366,14 +1377,18 @@ els.submitOrderBtn.addEventListener("click", async () => {
       els.imageModal.style.inset = "auto";
       els.imageModal.style.left = `${left}px`;
       els.imageModal.style.top = `${top}px`;
-    });
+    }
 
     function endPreviewDrag(event) {
       if (event.pointerId === previewDragPointerId) previewDragPointerId = null;
     }
 
-    els.imageDragHandle.addEventListener("pointerup", endPreviewDrag);
-    els.imageDragHandle.addEventListener("pointercancel", endPreviewDrag);
+    els.imageDragHandle.addEventListener("pointerdown", beginPreviewDrag);
+    els.largeImage.addEventListener("pointerdown", beginPreviewDrag);
+    els.largeImage.addEventListener("contextmenu", event => event.preventDefault());
+    window.addEventListener("pointermove", movePreviewWindow);
+    window.addEventListener("pointerup", endPreviewDrag);
+    window.addEventListener("pointercancel", endPreviewDrag);
 
     els.previousMenuImageBtn.addEventListener("click", () => {
       openImageReference(activePreviewIndex - 1);
