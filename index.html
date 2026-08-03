@@ -515,10 +515,43 @@
     }
 
     .image-modal img {
-      max-width: min(100%, 880px);
-      max-height: 88vh;
+      width: 100%;
+      height: calc(100% - 48px);
+      object-fit: contain;
       border-radius: 18px;
       box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+
+    .image-modal {
+      inset: 0 0 auto 0;
+      height: min(48vh, 500px);
+      padding: 10px;
+      background: rgba(28,22,18,.92);
+    }
+
+    .image-reference-card {
+      width: min(920px, 100%);
+      height: 100%;
+      margin: 0 auto;
+    }
+
+    .image-reference-actions {
+      height: 42px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .image-reference-actions button,
+    .image-reference-actions a {
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.12);
+      color: white;
+      border-radius: 10px;
+      padding: 7px 11px;
+      text-decoration: none;
+      cursor: pointer;
     }
 
     @media (max-width: 760px) {
@@ -584,6 +617,7 @@
             <option>宜勻</option>
             <option>庸冊</option>
           </select>
+          <div class="notice error" id="orderGuardNotice">請先選擇姓名，才能開始點餐</div>
         </div>
 
         <div class="field">
@@ -711,7 +745,15 @@
   </div>
 
   <div class="modal image-modal" id="imageModal">
-    <img id="largeImage" alt="放大菜單" />
+    <div class="image-reference-card">
+      <div class="image-reference-actions">
+        <button id="previousMenuImageBtn" type="button">← 上一張</button>
+        <a id="openMenuImageLink" href="#" target="_blank" rel="noopener">另開原圖</a>
+        <button id="nextMenuImageBtn" type="button">下一張 →</button>
+        <button id="closeMenuImageBtn" type="button">關閉</button>
+      </div>
+      <img id="largeImage" alt="菜單參考圖片" />
+    </div>
   </div>
 
   <script>
@@ -741,6 +783,7 @@
       menuImages: document.getElementById("menuImages"),
       imagePlaceholder: document.getElementById("imagePlaceholder"),
       employeeSelect: document.getElementById("employeeSelect"),
+      orderGuardNotice: document.getElementById("orderGuardNotice"),
       mealInput: document.getElementById("mealInput"),
       amountInput: document.getElementById("amountInput"),
       orderItems: document.getElementById("orderItems"),
@@ -769,8 +812,15 @@
       refreshMenusBtn: document.getElementById("refreshMenusBtn"),
       libraryNotice: document.getElementById("libraryNotice"),
       imageModal: document.getElementById("imageModal"),
-      largeImage: document.getElementById("largeImage")
+      largeImage: document.getElementById("largeImage"),
+      openMenuImageLink: document.getElementById("openMenuImageLink"),
+      previousMenuImageBtn: document.getElementById("previousMenuImageBtn"),
+      nextMenuImageBtn: document.getElementById("nextMenuImageBtn"),
+      closeMenuImageBtn: document.getElementById("closeMenuImageBtn")
     };
+
+    let activePreviewUrls = [];
+    let activePreviewIndex = 0;
 
     function persist() {
       localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
@@ -790,7 +840,7 @@
 
       loadSharedMenuImage();
 
-      els.submitOrderBtn.disabled = !state.isOpen;
+      updateOrderingAvailability();
       renderOrders();
       recalc();
     }
@@ -808,6 +858,19 @@
         els.notice.textContent = "⚠️ 金額超過 300 元，請確認是否輸入正確";
         els.notice.className = "notice error";
       }
+    }
+
+    function updateOrderingAvailability() {
+      const hasEmployee = Boolean(els.employeeSelect.value);
+      const enabled = hasEmployee && state.isOpen;
+
+      els.orderItems.querySelectorAll("input, button").forEach(control => {
+        control.disabled = !enabled;
+      });
+      els.addOrderItemBtn.disabled = !enabled;
+      els.noteInput.disabled = !enabled;
+      els.submitOrderBtn.disabled = !enabled;
+      els.orderGuardNotice.style.display = hasEmployee ? "none" : "block";
     }
 
     function renderOrders() {
@@ -876,6 +939,7 @@
       });
 
       syncOrderItems();
+      updateOrderingAvailability();
     }
 
     function getOrderItems() {
@@ -905,6 +969,10 @@
     }
 
     els.addOrderItemBtn.addEventListener("click", () => {
+      if (!els.employeeSelect.value) {
+        els.orderGuardNotice.textContent = "請先選擇姓名，才能新增餐點";
+        return;
+      }
       renderOrderItems([...getOrderItems(), emptyOrderItem()]);
       els.orderItems.lastElementChild.querySelector(".order-item-name").focus();
     });
@@ -931,6 +999,7 @@
       }
 
       recalc();
+      updateOrderingAvailability();
     });
 
 els.submitOrderBtn.addEventListener("click", async () => {
@@ -1005,7 +1074,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
         els.notice.textContent = "❌ 送出失敗，請稍後再試";
         els.notice.className = "notice error";
       } finally {
-        els.submitOrderBtn.disabled = !state.isOpen;
+        updateOrderingAvailability();
         els.submitOrderBtn.textContent = "送出訂單";
       }
     });
@@ -1205,11 +1274,31 @@ els.submitOrderBtn.addEventListener("click", async () => {
     document.getElementById("menuImageWrap").addEventListener("click", event => {
       const image = event.target.closest("img");
       if (!image) return;
-      els.largeImage.src = image.src;
-      els.imageModal.classList.add("show");
+      const images = [...els.menuImages.querySelectorAll("img")];
+      activePreviewUrls = images.map(item => item.src);
+      openImageReference(Math.max(images.indexOf(image), 0));
     });
 
-    els.imageModal.addEventListener("click", () => {
+    function openImageReference(index) {
+      if (!activePreviewUrls.length) return;
+      activePreviewIndex = (index + activePreviewUrls.length) % activePreviewUrls.length;
+      const url = activePreviewUrls[activePreviewIndex];
+      els.largeImage.src = url;
+      els.openMenuImageLink.href = url;
+      els.previousMenuImageBtn.disabled = activePreviewUrls.length < 2;
+      els.nextMenuImageBtn.disabled = activePreviewUrls.length < 2;
+      els.imageModal.classList.add("show");
+    }
+
+    els.previousMenuImageBtn.addEventListener("click", () => {
+      openImageReference(activePreviewIndex - 1);
+    });
+
+    els.nextMenuImageBtn.addEventListener("click", () => {
+      openImageReference(activePreviewIndex + 1);
+    });
+
+    els.closeMenuImageBtn.addEventListener("click", () => {
       els.imageModal.classList.remove("show");
     });
 
