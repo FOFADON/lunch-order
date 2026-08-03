@@ -904,7 +904,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
       els.loginModal.classList.remove("show");
     });
 
-    document.getElementById("loginBtn").addEventListener("click", () => {
+    document.getElementById("loginBtn").addEventListener("click", async () => {
       const password = els.adminPassword.value.trim();
 
       if (!password) {
@@ -912,11 +912,38 @@ els.submitOrderBtn.addEventListener("click", async () => {
         return;
       }
 
-      adminUploadPassword = password;
-      els.loginModal.classList.remove("show");
-      els.adminPanel.classList.add("show");
-      loadMenuLibrary();
-      els.adminPanel.scrollIntoView({ behavior: "smooth" });
+      const loginBtn = document.getElementById("loginBtn");
+      loginBtn.disabled = true;
+      loginBtn.textContent = "驗證中…";
+      els.loginNotice.textContent = "";
+
+      try {
+        const formData = new FormData();
+        formData.append("action", "verifyAdmin");
+        formData.append("password", password);
+
+        const response = await fetch(WEB_APP_URL, {
+          method: "POST",
+          body: formData
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.message || "管理密碼錯誤");
+        }
+
+        adminUploadPassword = password;
+        els.loginModal.classList.remove("show");
+        els.adminPanel.classList.add("show");
+        loadMenuLibrary();
+        els.adminPanel.scrollIntoView({ behavior: "smooth" });
+      } catch (error) {
+        adminUploadPassword = "";
+        els.loginNotice.textContent = error.message || "管理密碼驗證失敗";
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "登入";
+      }
     });
 
     document.getElementById("logoutAdminBtn").addEventListener("click", () => {
