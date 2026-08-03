@@ -899,6 +899,11 @@
     let previewImageTranslateY = 0;
     let previewPinchFocalX = 0;
     let previewPinchFocalY = 0;
+    let previewPanPointerId = null;
+    let previewPanStartX = 0;
+    let previewPanStartY = 0;
+    let previewPanStartTranslateX = 0;
+    let previewPanStartTranslateY = 0;
 
     function persist() {
       localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
@@ -1379,6 +1384,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
         y: event.clientY
       });
       if (previewPointers.size === 2) {
+        previewPanPointerId = null;
         const points = [...previewPointers.values()];
         previewPinchStartDistance = Math.hypot(
           points[0].x - points[1].x,
@@ -1394,6 +1400,18 @@ els.submitOrderBtn.addEventListener("click", async () => {
           (midpointX - centerX - previewImageTranslateX) / previewImageScale;
         previewPinchFocalY = centerY +
           (midpointY - centerY - previewImageTranslateY) / previewImageScale;
+        event.preventDefault();
+        return;
+      }
+      if (event.currentTarget === els.largeImage && previewImageScale > 1) {
+        previewPanPointerId = event.pointerId;
+        previewPanStartX = event.clientX;
+        previewPanStartY = event.clientY;
+        previewPanStartTranslateX = previewImageTranslateX;
+        previewPanStartTranslateY = previewImageTranslateY;
+        if (event.currentTarget.setPointerCapture) {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
         event.preventDefault();
         return;
       }
@@ -1432,6 +1450,20 @@ els.submitOrderBtn.addEventListener("click", async () => {
           previewImageScale * (previewPinchFocalX - centerX);
         previewImageTranslateY = midpointY - centerY -
           previewImageScale * (previewPinchFocalY - centerY);
+        if (previewImageScale <= 1.001) {
+          previewImageScale = 1;
+          previewImageTranslateX = 0;
+          previewImageTranslateY = 0;
+        }
+        applyPreviewImageTransform();
+        event.preventDefault();
+        return;
+      }
+      if (event.pointerId === previewPanPointerId) {
+        previewImageTranslateX = previewPanStartTranslateX +
+          event.clientX - previewPanStartX;
+        previewImageTranslateY = previewPanStartTranslateY +
+          event.clientY - previewPanStartY;
         applyPreviewImageTransform();
         event.preventDefault();
         return;
@@ -1462,6 +1494,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
       if (!previewPointers.has(event.pointerId)) return;
       previewPointers.delete(event.pointerId);
       if (event.pointerId === previewDragPointerId) previewDragPointerId = null;
+      if (event.pointerId === previewPanPointerId) previewPanPointerId = null;
       if (previewPointers.size < 2) {
         previewPinchStartDistance = 0;
       }
