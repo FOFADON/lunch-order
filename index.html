@@ -213,6 +213,36 @@
       font-size: 14px;
     }
 
+    .order-items { display: grid; gap: 12px; }
+
+    .order-item-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) 100px 82px 42px;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #faf6f1;
+    }
+
+    .order-item-row input {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 11px;
+      padding: 10px;
+    }
+
+    .order-item-note { grid-column: 1 / -1; }
+
+    .remove-order-item {
+      border: 0;
+      border-radius: 10px;
+      background: #f6e8e8;
+      color: var(--danger);
+      cursor: pointer;
+    }
+
     select, input[type="text"], input[type="number"], input[type="time"], input[type="password"] {
       width: 100%;
       border: 1px solid var(--line);
@@ -494,6 +524,13 @@
     @media (max-width: 760px) {
       .grid { grid-template-columns: 1fr; }
       .admin-grid { grid-template-columns: 1fr; }
+      .order-item-row {
+        grid-template-columns: minmax(0, 1fr) 82px 42px;
+      }
+      .order-item-name { grid-column: 1 / -1; }
+      .order-item-price { grid-column: 1; }
+      .order-item-quantity { grid-column: 2; }
+      .remove-order-item { grid-column: 3; }
       .admin-menu-row {
         grid-template-columns: 1fr 88px 82px 42px;
       }
@@ -550,13 +587,11 @@
         </div>
 
         <div class="field">
-          <label for="mealInput">我想吃什麼？</label>
-          <textarea id="mealInput" placeholder="例如：蔥燒雪花牛＋全熟蛋＋無糖紅茶" style="width:100%;min-height:92px;border:1px solid var(--line);border-radius:14px;padding:12px 13px;resize:vertical;"></textarea>
-        </div>
-
-        <div class="field">
-          <label for="amountInput">餐點金額</label>
-          <input id="amountInput" type="number" min="0" inputmode="numeric" placeholder="例如：185" />
+          <label>我想吃什麼？</label>
+          <div class="order-items" id="orderItems"></div>
+          <button class="small-btn" id="addOrderItemBtn" type="button" style="margin-top:10px">＋ 新增餐點</button>
+          <input id="mealInput" type="hidden" />
+          <input id="amountInput" type="hidden" />
         </div>
 
         <div class="field">
@@ -708,6 +743,8 @@
       employeeSelect: document.getElementById("employeeSelect"),
       mealInput: document.getElementById("mealInput"),
       amountInput: document.getElementById("amountInput"),
+      orderItems: document.getElementById("orderItems"),
+      addOrderItemBtn: document.getElementById("addOrderItemBtn"),
       noteInput: document.getElementById("noteInput"),
       totalAmount: document.getElementById("totalAmount"),
       companyAmount: document.getElementById("companyAmount"),
@@ -796,21 +833,93 @@
       });
     }
 
-    els.amountInput.addEventListener("input", recalc);
+    function emptyOrderItem() {
+      return { name: "", price: "", quantity: 1, note: "" };
+    }
+
+    function renderOrderItems(items = [emptyOrderItem()]) {
+      const safeItems = items.length ? items : [emptyOrderItem()];
+      els.orderItems.innerHTML = "";
+
+      safeItems.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "order-item-row";
+        row.innerHTML = `
+          <input class="order-item-name" type="text" placeholder="餐點名稱">
+          <input class="order-item-price" type="number" min="0" inputmode="numeric" placeholder="單價">
+          <input class="order-item-quantity" type="number" min="1" inputmode="numeric" value="1" title="數量">
+          <button class="remove-order-item" type="button" title="刪除餐點">×</button>
+          <input class="order-item-note" type="text" placeholder="這個餐點的備註（可不填）">
+        `;
+
+        row.querySelector(".order-item-name").value = item.name || "";
+        row.querySelector(".order-item-price").value = item.price ?? "";
+        row.querySelector(".order-item-quantity").value = Math.max(Number(item.quantity || 1), 1);
+        row.querySelector(".order-item-note").value = item.note || "";
+
+        row.querySelectorAll("input").forEach(input => {
+          input.addEventListener("input", syncOrderItems);
+        });
+
+        row.querySelector(".remove-order-item").addEventListener("click", () => {
+          if (els.orderItems.children.length === 1) {
+            row.querySelectorAll("input").forEach(input => {
+              input.value = input.classList.contains("order-item-quantity") ? "1" : "";
+            });
+          } else {
+            row.remove();
+          }
+          syncOrderItems();
+        });
+
+        els.orderItems.appendChild(row);
+      });
+
+      syncOrderItems();
+    }
+
+    function getOrderItems() {
+      return [...els.orderItems.querySelectorAll(".order-item-row")].map(row => ({
+        name: row.querySelector(".order-item-name").value.trim(),
+        price: Math.max(Number(row.querySelector(".order-item-price").value || 0), 0),
+        quantity: Math.max(Number(row.querySelector(".order-item-quantity").value || 1), 1),
+        note: row.querySelector(".order-item-note").value.trim()
+      }));
+    }
+
+    function syncOrderItems() {
+      const items = getOrderItems();
+      els.mealInput.value = items
+        .filter(item => item.name)
+        .map(item => `${item.name} ×${item.quantity}${item.note ? `（${item.note}）` : ""}`)
+        .join("\n");
+      els.amountInput.value = items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      recalc();
+    }
+
+    els.addOrderItemBtn.addEventListener("click", () => {
+      renderOrderItems([...getOrderItems(), emptyOrderItem()]);
+      els.orderItems.lastElementChild.querySelector(".order-item-name").focus();
+    });
 
     els.employeeSelect.addEventListener("change", () => {
       const existing = state.orders[els.employeeSelect.value];
 
       if (existing) {
-        els.mealInput.value = existing.meal;
-        els.amountInput.value = existing.total;
+        renderOrderItems(
+          Array.isArray(existing.items) && existing.items.length
+            ? existing.items
+            : [{ name: existing.meal, price: existing.total, quantity: 1, note: "" }]
+        );
         els.noteInput.value = existing.note || "";
         els.notice.textContent = `${existing.name} 已經點過，可修改後再次送出`;
         els.notice.className = "notice ok";
         els.submitOrderBtn.textContent = "更新訂單";
       } else {
-        els.mealInput.value = "";
-        els.amountInput.value = "";
+        renderOrderItems();
         els.noteInput.value = "";
         els.notice.textContent = "";
         els.notice.className = "notice";
@@ -825,10 +934,14 @@ els.submitOrderBtn.addEventListener("click", async () => {
       const meal = els.mealInput.value.trim();
       const total = Number(els.amountInput.value || 0);
       const note = els.noteInput.value.trim();
+      const items = getOrderItems().filter(item => item.name || item.price > 0);
 
       if (!state.isOpen) return showError("目前已關閉點餐");
       if (!name) return showError("請先選擇姓名");
       if (!meal) return showError("請輸入餐點");
+      if (items.some(item => !item.name || item.price <= 0)) {
+        return showError("每個餐點都要填寫名稱和正確單價");
+      }
       if (!Number.isFinite(total) || total <= 0) return showError("請輸入正確金額");
 
       if (total > 300 && !confirm(`你輸入的金額是 ${total} 元，確定正確嗎？`)) {
@@ -864,6 +977,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
         state.orders[name] = {
           name,
           meal,
+          items,
           note,
           total,
           company,
@@ -878,8 +992,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
           (selfPay > 0 ? `，需自行支付 ${selfPay} 元` : "");
         els.notice.className = "notice ok";
 
-        els.mealInput.value = "";
-        els.amountInput.value = "";
+        renderOrderItems();
         els.noteInput.value = "";
         recalc();
 
@@ -978,8 +1091,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
       state.orders = {};
       persist();
       els.employeeSelect.value = "";
-      els.mealInput.value = "";
-      els.amountInput.value = "";
+      renderOrderItems();
       els.noteInput.value = "";
       els.submitOrderBtn.textContent = "送出訂單";
       els.notice.textContent = "";
@@ -1306,6 +1418,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
         .replaceAll(">", "&gt;");
     }
 
+    renderOrderItems();
     renderAll();
   </script>
 </body>
