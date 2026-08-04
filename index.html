@@ -643,7 +643,7 @@
     <header class="topbar">
       <div class="brand">
         <h1>🍱 公司便當點餐</h1>
-        <p>每人公司補助上限 150 元，超過部分自行支付</p>
+        <p id="subsidyDescription">每人公司補助上限 150 元，超過部分自行支付</p>
       </div>
       <button class="admin-btn" id="adminOpenBtn">⚙️ 管理模式</button>
     </header>
@@ -849,6 +849,7 @@
       restaurantNameText: document.getElementById("restaurantNameText"),
       deadlineText: document.getElementById("deadlineText"),
       openStatus: document.getElementById("openStatus"),
+      subsidyDescription: document.getElementById("subsidyDescription"),
       menuImages: document.getElementById("menuImages"),
       imagePlaceholder: document.getElementById("imagePlaceholder"),
       employeeSelect: document.getElementById("employeeSelect"),
@@ -914,12 +915,39 @@
       localStorage.setItem("lunchTextOrderState", JSON.stringify(state));
     }
 
+    async function loadSharedSettings() {
+      try {
+        const response = await fetch(
+          `${WEB_APP_URL}?action=getSettings&t=${Date.now()}`
+        );
+        const result = await response.json();
+        if (!result.success || !result.settings) {
+          throw new Error(result.message || "無法讀取共用設定");
+        }
+
+        const settings = result.settings;
+        const subsidy = Number(settings.subsidy);
+        state.restaurant = String(settings.restaurant || "今日便當店");
+        state.deadline = String(settings.deadline || "10:30");
+        state.subsidy = Number.isFinite(subsidy) && subsidy >= 0
+          ? subsidy
+          : 150;
+        state.isOpen = settings.isOpen === true || String(settings.isOpen) === "true";
+        persist();
+        renderAll();
+      } catch (error) {
+        console.warn("共用設定讀取失敗，暫時使用本機設定", error);
+      }
+    }
+
     function renderAll() {
       els.restaurantNameText.textContent = state.restaurant;
       els.deadlineText.textContent = state.deadline;
       els.openStatus.textContent = state.isOpen ? "● 開放點餐" : "● 已關閉點餐";
       els.openStatus.style.color = state.isOpen ? "var(--success)" : "var(--danger)";
       els.openStatus.style.background = state.isOpen ? "#e9f5ef" : "#fbeaea";
+      els.subsidyDescription.textContent =
+        `每人公司補助上限 ${Number(state.subsidy ?? 150)} 元，超過部分自行支付`;
 
       els.restaurantInput.value = state.restaurant;
       els.deadlineInput.value = state.deadline;
@@ -935,8 +963,9 @@
 
     function recalc() {
       const total = Math.max(Number(els.amountInput.value || 0), 0);
-      const company = Math.min(total, Number(state.subsidy || 0));
-      const selfPay = Math.max(total - Number(state.subsidy || 0), 0);
+      const subsidy = Number(state.subsidy ?? 150);
+      const company = Math.min(total, subsidy);
+      const selfPay = Math.max(total - subsidy, 0);
 
       els.totalAmount.textContent = total;
       els.companyAmount.textContent = company;
@@ -1109,8 +1138,9 @@ els.submitOrderBtn.addEventListener("click", async () => {
         return;
       }
 
-      const company = Math.min(total, Number(state.subsidy || 150));
-      const selfPay = Math.max(total - Number(state.subsidy || 150), 0);
+      const subsidy = Number(state.subsidy ?? 150);
+      const company = Math.min(total, subsidy);
+      const selfPay = Math.max(total - subsidy, 0);
 
       const formData = new FormData();
       formData.append("name", name);
@@ -1231,20 +1261,51 @@ els.submitOrderBtn.addEventListener("click", async () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
-    document.getElementById("saveSettingsBtn").addEventListener("click", () => {
-      state.restaurant = els.restaurantInput.value.trim() || "今日便當店";
-      state.deadline = els.deadlineInput.value || "10:30";
-      state.subsidy = Math.max(Number(els.subsidyInput.value || 0), 0);
-      state.isOpen = els.openSelect.value === "true";
+    document.getElementById("saveSettingsBtn").addEventListener("click", async event => {
+      const saveButton = event.currentTarget;
+      const nextSettings = {
+        restaurant: els.restaurantInput.value.trim() || "今日便當店",
+        deadline: els.deadlineInput.value || "10:30",
+        subsidy: Math.max(Number(els.subsidyInput.value || 0), 0),
+        isOpen: els.openSelect.value === "true"
+      };
 
-      Object.values(state.orders).forEach(order => {
-        order.company = Math.min(order.total, state.subsidy);
-        order.selfPay = Math.max(order.total - state.subsidy, 0);
-      });
+      saveButton.disabled = true;
+      saveButton.textContent = "儲存中…";
 
-      persist();
-      renderAll();
-      alert("設定已儲存");
+      try {
+        const formData = new FormData();
+        formData.append("action", "saveSettings");
+        formData.append("password", adminUploadPassword);
+        formData.append("restaurant", nextSettings.restaurant);
+        formData.append("deadline", nextSettings.deadline);
+        formData.append("subsidy", String(nextSettings.subsidy));
+        formData.append("isOpen", String(nextSettings.isOpen));
+
+        const response = await fetch(WEB_APP_URL, {
+          method: "POST",
+          body: formData
+        });
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.message || "後端拒絕儲存設定");
+        }
+
+        Object.assign(state, nextSettings);
+        Object.values(state.orders).forEach(order => {
+          order.company = Math.min(order.total, state.subsidy);
+          order.selfPay = Math.max(order.total - state.subsidy, 0);
+        });
+
+        persist();
+        renderAll();
+        alert("共用設定已儲存，其他同事重新整理後會套用");
+      } catch (error) {
+        alert(`設定儲存失敗：${error.message || "請稍後再試"}`);
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = "儲存設定";
+      }
     });
 
     document.getElementById("clearOrdersBtn").addEventListener("click", () => {
@@ -1806,6 +1867,7 @@ els.submitOrderBtn.addEventListener("click", async () => {
 
     renderOrderItems();
     renderAll();
+    loadSharedSettings();
   </script>
 </body>
 </html>
