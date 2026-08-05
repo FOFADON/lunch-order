@@ -21,10 +21,18 @@
       "name": "勁便當.png",
       "uploadedAt": "2026-08-05T09:26:51.142Z",
       "sha": "48c086635246a549bbfc35a12aea5263ca4bd6c4"
+    },
+    {
+      "id": "217fec17",
+      "path": "menu-images/20260805-192126-217fec17.jpg",
+      "name": "IMG_3456.jpeg",
+      "uploadedAt": "2026-08-05T11:21:26.243Z",
+      "sha": "8f996bef9bdc775106ac6a763b6dffd155e2ee92"
     }
   ],
   "activeImages": [
-    "menu-images/20260805-172651-4b1d4d50.jpg"
+    "menu-images/20260805-172651-4b1d4d50.jpg",
+    "menu-images/20260805-192126-217fec17.jpg"
   ],
-  "updatedAt": "2026-08-05T09:27:31.695Z"
+  "updatedAt": "2026-08-05T11:21:26.243Z"
 }
