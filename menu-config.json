@@ -14,11 +14,19 @@
       "name": "IMG_3288.jpeg",
       "uploadedAt": "2026-08-03T11:20:58.231Z",
       "sha": "99b3af251d3d1905c08f66051d5a9390d633b633"
+    },
+    {
+      "id": "4b1d4d50",
+      "path": "menu-images/20260805-172651-4b1d4d50.jpg",
+      "name": "勁便當.png",
+      "uploadedAt": "2026-08-05T09:26:51.142Z",
+      "sha": "48c086635246a549bbfc35a12aea5263ca4bd6c4"
     }
   ],
   "activeImages": [
     "menu-images/20260803-192058-d5f78bcf.jpg",
-    "menu-images/20260803-191826-3a25571a.jpg"
+    "menu-images/20260803-191826-3a25571a.jpg",
+    "menu-images/20260805-172651-4b1d4d50.jpg"
   ],
-  "updatedAt": "2026-08-03T11:21:47.984Z"
+  "updatedAt": "2026-08-05T09:26:51.142Z"
 }
