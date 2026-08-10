@@ -28,11 +28,19 @@
       "name": "IMG_3456.jpeg",
       "uploadedAt": "2026-08-05T11:21:26.243Z",
       "sha": "8f996bef9bdc775106ac6a763b6dffd155e2ee92"
+    },
+    {
+      "id": "4f2b8abe",
+      "path": "menu-images/20260810-110517-4f2b8abe.jpg",
+      "name": "丸龜.jpg",
+      "uploadedAt": "2026-08-10T03:05:17.429Z",
+      "sha": "7dda7e7dc801fc5ffc44f40fcfa11bf4f1eb205f"
     }
   ],
   "activeImages": [
     "menu-images/20260805-192126-217fec17.jpg",
-    "menu-images/20260803-192058-d5f78bcf.jpg"
+    "menu-images/20260803-192058-d5f78bcf.jpg",
+    "menu-images/20260810-110517-4f2b8abe.jpg"
   ],
-  "updatedAt": "2026-08-05T12:19:45.126Z"
+  "updatedAt": "2026-08-10T03:05:17.429Z"
 }
