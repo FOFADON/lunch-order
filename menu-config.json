@@ -42,11 +42,19 @@
       "name": "丸龜炸物.jpg",
       "uploadedAt": "2026-08-10T03:05:37.008Z",
       "sha": "c072590d43d3b1bea6d31261c6302c7d66d6f436"
+    },
+    {
+      "id": "c480ad97",
+      "path": "menu-images/20260810-111758-c480ad97.jpg",
+      "name": "+蛋選項.png",
+      "uploadedAt": "2026-08-10T03:17:58.195Z",
+      "sha": "56a3ac74a1fb3118690c899249d30be9eb12fd25"
     }
   ],
   "activeImages": [
     "menu-images/20260810-110537-35714417.jpg",
-    "menu-images/20260810-110517-4f2b8abe.jpg"
+    "menu-images/20260810-110517-4f2b8abe.jpg",
+    "menu-images/20260810-111758-c480ad97.jpg"
   ],
-  "updatedAt": "2026-08-10T03:06:38.901Z"
+  "updatedAt": "2026-08-10T03:17:58.195Z"
 }
