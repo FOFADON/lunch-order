@@ -49,12 +49,19 @@
       "name": "+蛋選項.png",
       "uploadedAt": "2026-08-10T03:17:58.195Z",
       "sha": "56a3ac74a1fb3118690c899249d30be9eb12fd25"
+    },
+    {
+      "id": "7009855a",
+      "path": "menu-images/20260810-114009-7009855a.jpg",
+      "name": "鴨飯兒.jpg",
+      "uploadedAt": "2026-08-10T03:40:09.692Z",
+      "sha": "83e02ce36b6a839d147df22b64cfe3e3a52fc971"
     }
   ],
   "activeImages": [
-    "menu-images/20260810-111758-c480ad97.jpg",
     "menu-images/20260810-110537-35714417.jpg",
-    "menu-images/20260810-110517-4f2b8abe.jpg"
+    "menu-images/20260810-110517-4f2b8abe.jpg",
+    "menu-images/20260810-114009-7009855a.jpg"
   ],
-  "updatedAt": "2026-08-10T03:18:17.764Z"
+  "updatedAt": "2026-08-10T03:40:09.692Z"
 }
