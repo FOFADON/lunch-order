@@ -56,11 +56,19 @@
       "name": "鴨飯兒.jpg",
       "uploadedAt": "2026-08-10T03:40:09.692Z",
       "sha": "83e02ce36b6a839d147df22b64cfe3e3a52fc971"
+    },
+    {
+      "id": "33ad092e",
+      "path": "menu-images/20260820-141721-33ad092e.jpg",
+      "name": "雞湯.jpg",
+      "uploadedAt": "2026-08-20T06:17:21.274Z",
+      "sha": "175ab33c02b39f4120502288f66980038587f246"
     }
   ],
   "activeImages": [
     "menu-images/20260810-114009-7009855a.jpg",
-    "menu-images/20260803-192058-d5f78bcf.jpg"
+    "menu-images/20260803-192058-d5f78bcf.jpg",
+    "menu-images/20260820-141721-33ad092e.jpg"
   ],
-  "updatedAt": "2026-08-10T03:43:14.335Z"
+  "updatedAt": "2026-08-20T06:17:21.274Z"
 }
